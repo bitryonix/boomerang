@@ -1,0 +1,19 @@
+[workspace]
+
+members = [
+    "iso",
+    "niso",
+    "boomlet",
+    "descriptor",
+    "protocol",
+    "wt",
+    "sar",
+    "st",
+    "peer",
+    "phone",
+    "poc",
+    "tracing_utils",
+    "bitcoin_utils",
+    "cryptography"
+]
+resolver = "2"

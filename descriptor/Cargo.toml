@@ -1,0 +1,13 @@
+[package]
+name = "descriptor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+protocol = {path = "../protocol"}
+tracing_utils = {path = "../tracing_utils"}
+cryptography = {path = "../cryptography"}
+bitcoin = "0.32.5"
+miniscript = { version = "12.3.2", features = ["compiler", "serde"] }
+getset = "0.1.5"
+tracing = "0.1.41"
