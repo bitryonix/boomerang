@@ -1050,7 +1050,7 @@ impl Boomlet {
             return Err(err);
         }
         // Unpack message data.
-        let (boomerang_params_fingerprint_signed_by_wt,) =
+        let (boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt,) =
             setup_niso_boomlet_message_6.into_parts();
         // Unpack state data.
         let (Some(boomerang_params), Some(primary_wt_id)) =
@@ -1061,19 +1061,34 @@ impl Boomlet {
 
         // Do computation.
         // Assert (1) that signature of WT on Boomerang params fingerprint is correct.
-        let received_boomerang_params_fingerprint = traceable_unfold_or_error!(
-            boomerang_params_fingerprint_signed_by_wt
+        let boomerang_params_fingerprint_suffixed_by_wt = traceable_unfold_or_error!(
+            boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt
                 .verify_and_unbundle(primary_wt_id.get_wt_pubkey())
                 .map_err(error::ConsumeSetupNisoBoomletMessage6Error::SignatureVerification),
             "Failed to verify watchtowers's signature on the fingerprint of the Boomerang parameter.",
         );
         let registered_boomerang_params_fingerprint = Cryptography::hash(boomerang_params);
         // Assert (2) that input Boomerang params fingerprint matches the actual Boomerang params fingerprint.
-        if registered_boomerang_params_fingerprint != received_boomerang_params_fingerprint {
-            let err = error::ConsumeSetupNisoBoomletMessage6Error::DisagreementOnBoomerangParamsFingerprint;
+        if &registered_boomerang_params_fingerprint
+            != boomerang_params_fingerprint_suffixed_by_wt.get_boomerang_params_fingerprint()
+        {
+            let err =
+                error::ConsumeSetupNisoBoomletMessage6Error::DisagreementOnBoomerangParamsFingerprint;
             error_log!(
                 err,
                 "Watchtower's Boomerang parameter fingerprint is not same as the one in the stored in Boomlet."
+            );
+            return Err(err);
+        }
+
+        if SUFFIX_ADDED_BY_WT_MAGIC_SETUP_AFTER_SETUP_NISO_WT_MESSAGE_2_SETUP_SERVICE_INITIALIZED
+            != boomerang_params_fingerprint_suffixed_by_wt.get_wt_suffix()
+        {
+            let err =
+                error::ConsumeSetupNisoBoomletMessage6Error::DisagreementOnWtBoomerangParamsFingerprintSuffix;
+            error_log!(
+                err,
+                "Watchtower's suffix added to Boomerang parameter fingerprint is not same as expected."
             );
             return Err(err);
         }

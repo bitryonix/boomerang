@@ -127,6 +127,7 @@ pub enum ConsumeSetupWtNisoMessage2Error {
     StateNotSynchronized,
     SignatureVerification(CryptographySignatureVerificationError),
     DisagreementOnBoomerangParamsFingerprint,
+    DisagreementOnWtBoomerangParamsFingerprintSuffix,
 }
 
 #[derive(Debug, Display, Error)]

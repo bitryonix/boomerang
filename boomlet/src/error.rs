@@ -121,6 +121,7 @@ pub enum ConsumeSetupNisoBoomletMessage6Error {
     StateNotSynchronized,
     SignatureVerification(CryptographySignatureVerificationError),
     DisagreementOnBoomerangParamsFingerprint,
+    DisagreementOnWtBoomerangParamsFingerprintSuffix,
 }
 
 #[derive(Debug, Display, Error)]

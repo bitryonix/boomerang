@@ -58,6 +58,7 @@ pub static SHARED_STATE_BACKUP_DONE_MAGIC: &str =
     "boomlet_backup_done_and_setup_finish_initialized";
 
 pub static SUFFIX_ADDED_BY_WT_MAGIC: &str = "setup_sar_acknowledgement_of_finalization_received";
+pub static SUFFIX_ADDED_BY_WT_MAGIC_SETUP_AFTER_SETUP_NISO_WT_MESSAGE_2_SETUP_SERVICE_INITIALIZED: &str = "setup_peers_registration_with_wt_completed";
 
 pub static BOOMLET_BACKUP_REQUEST_MAGIC: &str = "boomlet_backup_request";
 pub static BOOMLET_BACKUP_DONE_MAGIC: &str = "boomlet_backup_done";

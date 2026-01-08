@@ -6,9 +6,10 @@ use cryptography::{
 };
 use protocol::{
     constructs::{
-        BitcoinCoreAuth, SarId, TorSecretKey, WtId, WtPeerId, WtSarSetupResponse,
-        WtServiceFeePaymentInfo,
+        BitcoinCoreAuth, SarId, TorSecretKey, WtBoomerangParamsFingerprint, WtId, WtPeerId,
+        WtSarSetupResponse, WtServiceFeePaymentInfo,
     },
+    magic::SUFFIX_ADDED_BY_WT_MAGIC_SETUP_AFTER_SETUP_NISO_WT_MESSAGE_2_SETUP_SERVICE_INITIALIZED,
     messages::{
         Parcel,
         setup::{
@@ -370,11 +371,12 @@ impl Wt {
 
         // Do computation.
         let result_data = boomerang_peers_collection.iter().map(|wt_peer_id| {
+            let wt_boomerang_params_fingerprint = WtBoomerangParamsFingerprint::new(*wt_peer_id.get_boomerang_params_fingerprint(), SUFFIX_ADDED_BY_WT_MAGIC_SETUP_AFTER_SETUP_NISO_WT_MESSAGE_2_SETUP_SERVICE_INITIALIZED);
             (
                 wt_peer_id.clone(),
                 // Sign the Boomerang params fingerprint.
                 SignedData::sign_and_bundle(
-                    *wt_peer_id.get_boomerang_params_fingerprint(),
+                    wt_boomerang_params_fingerprint,
                     wt_privkey,
                 ),
             )
@@ -382,10 +384,10 @@ impl Wt {
 
         // Log finish.
         let result = Parcel::from_batch(result_data.map(
-            |(wt_peer_id, boomerang_params_fingerprint_signed_by_wt)| {
+            |(wt_peer_id, wt_boomerang_params_fingerprint_signed_by_wt)| {
                 (
                     wt_peer_id,
-                    SetupWtNisoMessage2::new(boomerang_params_fingerprint_signed_by_wt),
+                    SetupWtNisoMessage2::new(wt_boomerang_params_fingerprint_signed_by_wt),
                 )
             },
         ));

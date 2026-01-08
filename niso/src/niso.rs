@@ -8,8 +8,9 @@ use bitcoincore_rpc::Client;
 use cryptography::{Cryptography, PublicKey, SignedData, SymmetricCiphertext};
 use protocol::constructs::{
     Approvals, BitcoinCoreAuth, BoomerangParams, InitiatorBoomletData, PeerAddress, PeerId, Ping,
-    SarId, TorAddress, TorSecretKey, TxApproval, TxCommit, WtIdsCollection, WtPeerId,
-    WtSarSetupResponse, WtServiceFeePaymentInfo, WtServiceFeePaymentReceipt,
+    SarId, TorAddress, TorSecretKey, TxApproval, TxCommit, WtBoomerangParamsFingerprint,
+    WtIdsCollection, WtPeerId, WtSarSetupResponse, WtServiceFeePaymentInfo,
+    WtServiceFeePaymentReceipt,
 };
 
 pub const TRACING_ACTOR: &str = "NISO";
@@ -135,7 +136,8 @@ pub struct Niso {
     pub(super) boomerang_params_fingerprint_signed_by_boomlet: Option<SignedData<[u8; 32]>>,
     pub(super) wt_service_fee_payment_info: Option<WtServiceFeePaymentInfo>,
     pub(super) wt_service_fee_payment_receipt: Option<WtServiceFeePaymentReceipt>,
-    pub(super) boomerang_params_fingerprint_signed_by_wt: Option<SignedData<[u8; 32]>>,
+    pub(super) boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt:
+        Option<SignedData<WtBoomerangParamsFingerprint>>,
     pub(super) shared_state_fingerprint_signed_by_boomlet: Option<SignedData<[u8; 32]>>,
     pub(super) shared_state_fingerprint_signed_by_boomlet_i_self_exclusive_collection:
         Option<BTreeMap<PeerId, SignedData<[u8; 32]>>>,
@@ -235,7 +237,7 @@ impl Niso {
             boomerang_params_fingerprint_signed_by_boomlet: None,
             wt_service_fee_payment_info: None,
             wt_service_fee_payment_receipt: None,
-            boomerang_params_fingerprint_signed_by_wt: None,
+            boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt: None,
             shared_state_fingerprint_signed_by_boomlet: None,
             shared_state_fingerprint_signed_by_boomlet_i_self_exclusive_collection: None,
             sar_ids_collection_signed_by_boomlet_encrypted_by_boomlet_for_wt: None,

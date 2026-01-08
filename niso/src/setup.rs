@@ -1006,7 +1006,8 @@ impl Niso {
             return Err(err);
         }
         // Unpack message data.
-        let (boomerang_params_fingerprint_signed_by_wt,) = setup_wt_niso_message_2.into_parts();
+        let (boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt,) =
+            setup_wt_niso_message_2.into_parts();
         // Unpack state data.
         let (Some(boomerang_params), Some(wt_ids_collection)) =
             (&self.boomerang_params, &self.wt_ids_collection)
@@ -1016,8 +1017,8 @@ impl Niso {
 
         // Do computation.
         // Assert (1) that signature of WT on Boomerang params fingerprint is correct.
-        let received_boomerang_params_fingerprint = traceable_unfold_or_error!(
-            boomerang_params_fingerprint_signed_by_wt
+        let boomerang_params_fingerprint_suffixed_by_wt = traceable_unfold_or_error!(
+            boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt
                 .clone()
                 .verify_and_unbundle(wt_ids_collection.get_active_wt().get_wt_pubkey())
                 .map_err(error::ConsumeSetupWtNisoMessage2Error::SignatureVerification),
@@ -1025,7 +1026,9 @@ impl Niso {
         );
         let registered_boomerang_params_fingerprint = Cryptography::hash(boomerang_params);
         // Assert (2) that input Boomerang params fingerprint matches the actual Boomerang params fingerprint.
-        if registered_boomerang_params_fingerprint != received_boomerang_params_fingerprint {
+        if &registered_boomerang_params_fingerprint
+            != boomerang_params_fingerprint_suffixed_by_wt.get_boomerang_params_fingerprint()
+        {
             let err =
                 error::ConsumeSetupWtNisoMessage2Error::DisagreementOnBoomerangParamsFingerprint;
             error_log!(
@@ -1035,10 +1038,22 @@ impl Niso {
             return Err(err);
         }
 
+        if SUFFIX_ADDED_BY_WT_MAGIC_SETUP_AFTER_SETUP_NISO_WT_MESSAGE_2_SETUP_SERVICE_INITIALIZED
+            != boomerang_params_fingerprint_suffixed_by_wt.get_wt_suffix()
+        {
+            let err =
+                error::ConsumeSetupWtNisoMessage2Error::DisagreementOnWtBoomerangParamsFingerprintSuffix;
+            error_log!(
+                err,
+                "Watchtower's suffix added to Boomerang parameter fingerprint is not same as expected."
+            );
+            return Err(err);
+        }
+
         // Change State.
         self.state = State::Setup_AfterSetupWtNisoMessage2_SetupWtServiceInitialized;
-        self.boomerang_params_fingerprint_signed_by_wt =
-            Some(boomerang_params_fingerprint_signed_by_wt);
+        self.boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt =
+            Some(boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt);
         // Log finish.
         let result = ();
         function_finish_log!(result);
@@ -1062,8 +1077,8 @@ impl Niso {
             return Err(err);
         }
         // Unpack state data.
-        let (Some(boomerang_params_fingerprint_signed_by_wt),) =
-            (&self.boomerang_params_fingerprint_signed_by_wt,)
+        let (Some(boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt),) =
+            (&self.boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt,)
         else {
             unreachable_panic!("Assumed to have data of current state.");
         };
@@ -1072,8 +1087,9 @@ impl Niso {
         {}
 
         // Log finish.
-        let result =
-            SetupNisoBoomletMessage6::new(boomerang_params_fingerprint_signed_by_wt.clone());
+        let result = SetupNisoBoomletMessage6::new(
+            boomerang_params_fingerprint_suffixed_by_wt_signed_by_wt.clone(),
+        );
         function_finish_log!(result);
         Ok(result)
     }

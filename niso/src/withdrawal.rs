@@ -1209,12 +1209,11 @@ impl Niso {
                     .map_err(error::ConsumeWithdrawalWtNonInitiatorNisoMessage2Error::IncorrectNonInitiatorPeerTxApproval),
                 "Non-initiator boomlet's tx approval is incorrect.",
                 );
-                
                 Ok(())
             })?;
 
-            // Check (4) if the wt tx approval is not too old compared to non-initiator peer tx approval.
-                traceable_unfold_or_error!(
+        // Check (4) if the wt tx approval is not too old compared to non-initiator peer tx approval.
+        traceable_unfold_or_error!(
                     wt_tx_approval.check_correctness(
                         MagicCheck::Skip,
                         TxIdCheck::Skip,
