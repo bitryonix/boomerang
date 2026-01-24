@@ -1,6 +1,8 @@
 use cryptography::CryptographySignatureVerificationError;
 use derive_more::{Display, Error};
-use protocol::constructs::{TxApprovalCheckCorrectnessError, TxCommitCheckCorrectnessError};
+use protocol::constructs::{
+    PingCheckCorrectnessError, TxApprovalCheckCorrectnessError, TxCommitCheckCorrectnessError,
+};
 
 #[derive(Debug, Display, Error)]
 pub enum ConsumeSetupNisoInput1Error {
@@ -27,7 +29,6 @@ pub enum ProduceSetupNisoStMessage1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeSetupNisoInput2Error {
     StateNotSynchronized,
-    SelfNotIncludedInReceivedPeerAddresses,
     SignatureVerification(CryptographySignatureVerificationError),
 }
 
@@ -589,6 +590,10 @@ pub enum ConsumeWithdrawalWtNisoMessage4Error {
     StateNotSynchronized,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     BadPsbt,
+    NotTheSamePeers,
+    SignatureVerification(CryptographySignatureVerificationError),
+    IncorrectReachedPing(PingCheckCorrectnessError),
+    MalfunctioningFullNode,
 }
 
 #[derive(Debug, Display, Error)]

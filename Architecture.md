@@ -2,6 +2,17 @@
 
 This document is produced to help you understand the decisions that implementation has made on how to handle certain issues and implement certain features. This does not cover the logic of Boomerang protocol itself.
 
+## Table of Contents
+
+- [Architecture](#architecture)
+  - [Table of Contents](#table-of-contents)
+  - [Logging](#logging)
+  - [Protocol Structures](#protocol-structures)
+    - [Messages](#messages)
+    - [Constructs](#constructs)
+  - [Cryptography](#cryptography)
+  - [Message Passing](#message-passing)
+
 ## Logging
 
 Implementation uses `tracing` crate for logging. The `tracing_utils` crate contains macros for assertion/unwrapping + logging functionalities, and developers must only use `tracing` indirectly through this crate.

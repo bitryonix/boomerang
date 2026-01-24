@@ -117,10 +117,8 @@ pub struct Niso {
         u32,
     pub(super) tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers:
         u32,
-    pub(super) tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers:
-        u32,
     // Minimum distances.
-    pub(super) required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer:
+    pub(super) required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers:
         u32,
     // Transient Fields
     pub(super) boomerang_params_seed_with_nonce_encrypted_by_boomlet_for_st:
@@ -194,8 +192,7 @@ impl Niso {
         tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers: u32,
         tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer: u32,
         tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers: u32,
-        tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers: u32,
-        required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer: u32,
+        required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers: u32,
     ) -> Self {
         Niso {
             // Main Fields
@@ -224,9 +221,8 @@ impl Niso {
             tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers,
             tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer,
             tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
-            tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
             // Distances.
-            required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
             // Transient Fields
             boomerang_params_seed_with_nonce_encrypted_by_boomlet_for_st: None,
             boomerang_params_seed_with_nonce_signed_by_st_encrypted_by_st_for_boomlet: None,

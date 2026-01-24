@@ -416,7 +416,12 @@ impl Boomlet {
                         *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
                     )
                 ),
-                TimestampCheck::Check(min(niso_event_block_height, *wt_tx_approval.get_event_block_height())),
+                TimestampCheck::Check(
+                    min(
+                        niso_event_block_height,
+                        *wt_tx_approval.get_event_block_height()
+                    )
+                ),
             )
                 .map_err(error::ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error::IncorrectPeerTxApproval),
             "Initiator Boomlet's tx approval is incorrect.",
@@ -438,7 +443,10 @@ impl Boomlet {
                 TimestampCheck::Check(
                     min(
                         niso_event_block_height,
-                        BitcoinUtils::absolute_height_saturating_add(*initiator_boomlet_tx_approval.get_event_block_height(), *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt)
+                        BitcoinUtils::absolute_height_saturating_add(
+                            *initiator_boomlet_tx_approval.get_event_block_height(),
+                            *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
+                        )
                     )
                 ),
             )
@@ -737,7 +745,6 @@ impl Boomlet {
             Some(wt_tx_approval_signed_by_wt),
             tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
             tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
-            tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
             Some(initiator_boomlet_tx_approval_signed_by_initiator_boomlet),
         ) = (
             &self.boomerang_params,
@@ -746,7 +753,6 @@ impl Boomlet {
             &self.wt_tx_approval_signed_by_wt,
             &self.tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
             &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
-            &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
             &self.initiator_boomlet_tx_approval_signed_by_initiator_boomlet,
         )
         else {
@@ -825,7 +831,7 @@ impl Boomlet {
                         TimestampCheck::Check(
                                 BitcoinUtils::absolute_height_saturating_sub(
                                     niso_event_block_height,
-                                    *tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
+                                    *tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
                                 )
                         ),
                         TimestampCheck::Skip,
@@ -1126,8 +1132,16 @@ impl Boomlet {
                     MagicCheck::Check,
                     TxIdCheck::Check(*withdrawal_tx_id),
                     TimestampCheck::Check(*initiator_boomlet_tx_approval.get_event_block_height()),
-                    TimestampCheck::Check(min(BitcoinUtils::absolute_height_saturating_add(*initiator_boomlet_tx_approval.get_event_block_height(), *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt), niso_event_block_height)
-                ))
+                    TimestampCheck::Check(
+                        min(
+                            BitcoinUtils::absolute_height_saturating_add(
+                                *initiator_boomlet_tx_approval.get_event_block_height(),
+                                *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
+                            ),
+                            niso_event_block_height
+                        )
+                    )
+                )
                 .map_err(error::ConsumeWithdrawalNisoBoomletMessage3Error::IncorrectWtTxApproval),
             "Watchtower's tx approval is incorrect.",
         );
@@ -1148,8 +1162,12 @@ impl Boomlet {
                         TxIdCheck::Check(*withdrawal_tx_id),
                         TimestampCheck::Check(
                             max(
-                                BitcoinUtils::absolute_height_saturating_sub(niso_event_block_height, *tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer),
-                                *wt_tx_approval.get_event_block_height(),)
+                                BitcoinUtils::absolute_height_saturating_sub(
+                                    niso_event_block_height,
+                                    *tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer
+                                ),
+                                *wt_tx_approval.get_event_block_height(),
+                            )
                         ),
                         TimestampCheck::Check(
                             BitcoinUtils::absolute_height_saturating_sub(
@@ -1166,7 +1184,8 @@ impl Boomlet {
                     boomlet_i_tx_approval.check_correctness(
                         MagicCheck::Check,
                         TxIdCheck::Check(*withdrawal_tx_id),
-                        TimestampCheck::Check(max(
+                        TimestampCheck::Check(
+                            max(
                                 BitcoinUtils::absolute_height_saturating_sub(
                                     niso_event_block_height,
                                     *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_receiving_all_non_initiator_tx_approvals_by_initiator_peer
@@ -1460,7 +1479,12 @@ impl Boomlet {
             initiator_boomlet_tx_commit.check_correctness(
                 MagicCheck::Check,
                 TxIdCheck::Check(*withdrawal_tx_id),
-                TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(niso_event_block_height, *tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_initiator_peer_tx_commitment_by_non_initiator_peers)),
+                TimestampCheck::Check(
+                    BitcoinUtils::absolute_height_saturating_sub(
+                        niso_event_block_height,
+                        *tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_initiator_peer_tx_commitment_by_non_initiator_peers
+                    )
+                ),
                 TimestampCheck::Check(niso_event_block_height),
             )
                 .map_err(error::ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage6Error::IncorrectPeerTxCommit),
@@ -1574,7 +1598,7 @@ impl Boomlet {
             Some(withdrawal_duress_placeholder_content),
             Some(duress_padding),
             tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers,
-            required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         ) = (
             &self.peer_id,
             &self.boomerang_params,
@@ -1584,7 +1608,7 @@ impl Boomlet {
             &self.withdrawal_duress_placeholder_content,
             &self.duress_padding,
             &self.tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers,
-            &self.required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            &self.required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         )
         else {
             unreachable_panic!("Assumed to have data of current state.");
@@ -1647,8 +1671,18 @@ impl Boomlet {
                     boomlet_tx_commit.check_correctness(
                         MagicCheck::Check,
                         TxIdCheck::Check(*withdrawal_tx_id),
-                        TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(niso_event_block_height, *tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers)),
-                        TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(niso_event_block_height, *required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer)),
+                        TimestampCheck::Check(
+                            BitcoinUtils::absolute_height_saturating_sub(
+                                niso_event_block_height,
+                                *tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers
+                            )
+                        ),
+                        TimestampCheck::Check(
+                            BitcoinUtils::absolute_height_saturating_sub(
+                                niso_event_block_height,
+                                *required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers
+                            )
+                        ),
                     )
                         .map_err(error::ConsumeWithdrawalNisoBoomletMessage5Error::IncorrectTxCommit),
                     "Boomlet's tx commit is incorrect.",
@@ -1941,10 +1975,12 @@ impl Boomlet {
                 .check_correctness(
                     MagicCheck::Check,
                     TxIdCheck::Check(*withdrawal_tx_id),
-                    TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(
-                        niso_event_block_height,
-                        *tolerance_in_blocks_from_creating_pong_by_wt_to_reviewing_the_pong_in_peers_boomlet,
-                    )),
+                    TimestampCheck::Check(
+                        BitcoinUtils::absolute_height_saturating_sub(
+                            niso_event_block_height,
+                            *tolerance_in_blocks_from_creating_pong_by_wt_to_reviewing_the_pong_in_peers_boomlet,
+                        )
+                    ),
                     TimestampCheck::Check(niso_event_block_height),
                     TimestampCheck::Skip,
                     TimestampCheck::Skip,

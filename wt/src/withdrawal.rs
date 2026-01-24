@@ -167,10 +167,12 @@ impl Wt {
                 .check_correctness(
                     MagicCheck::Check,
                     TxIdCheck::Skip,
-                    TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(
-                        most_work_bitcoin_block_height,
-                        *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
-                    )),
+                    TimestampCheck::Check(
+                        BitcoinUtils::absolute_height_saturating_sub(
+                            most_work_bitcoin_block_height,
+                            *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
+                        )
+                    ),
                     TimestampCheck::Check(most_work_bitcoin_block_height),
                 )
                 .map_err(error::ConsumeWithdrawalNisoWtMessage1Error::IncorrectTxApproval),
@@ -702,7 +704,10 @@ impl Wt {
                 "Expected the block height received from the Bitcoin full node to be correct according to consensus."
             );
 
-            if most_work_bitcoin_block_height >= BitcoinUtils::absolute_height_saturating_add(*initiator_peer_tx_approval_event_block_height, *required_minimum_distance_in_blocks_between_initiator_peer_tx_approval_and_receiving_all_non_initiator_tx_approvals_by_initiator_peer) {
+            if most_work_bitcoin_block_height >= BitcoinUtils::absolute_height_saturating_add(
+                *initiator_peer_tx_approval_event_block_height,
+                *required_minimum_distance_in_blocks_between_initiator_peer_tx_approval_and_receiving_all_non_initiator_tx_approvals_by_initiator_peer
+            ) {
                 break;
             }
 
@@ -960,10 +965,12 @@ impl Wt {
                 .check_correctness(
                     MagicCheck::Check,
                     TxIdCheck::Check(*withdrawal_tx_id),
-                    TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(
-                        most_work_bitcoin_block_height,
-                        *tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_sar_response_by_wt
-                    )),
+                    TimestampCheck::Check(
+                        BitcoinUtils::absolute_height_saturating_sub(
+                            most_work_bitcoin_block_height,
+                            *tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_sar_response_by_wt
+                        )
+                    ),
                     TimestampCheck::Check(most_work_bitcoin_block_height),
                 )
                 .map_err(error::ConsumeWithdrawalSarWtMessage1Error::IncorrectPeerTxCommit),
@@ -1364,7 +1371,12 @@ impl Wt {
                     boomlet_tx_commit.check_correctness(
                         MagicCheck::Check,
                         TxIdCheck::Check(*withdrawal_tx_id),
-                        TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(most_work_bitcoin_block_height, *tolerance_in_blocks_from_tx_commitment_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_commitment_by_wt_having_sar_response_back_to_wt)),
+                        TimestampCheck::Check(
+                            BitcoinUtils::absolute_height_saturating_sub(
+                                most_work_bitcoin_block_height,
+                                *tolerance_in_blocks_from_tx_commitment_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_commitment_by_wt_having_sar_response_back_to_wt
+                            )
+                        ),
                         TimestampCheck::Check(most_work_bitcoin_block_height),
                     )
                         .map_err(error::ConsumeWithdrawalNonInitiatorSarWtMessage1Error::IncorrectTxCommit),
@@ -1440,7 +1452,7 @@ impl Wt {
             Some(initiator_boomlet_tx_commit_signed_by_initiator_boomlet),
             Some(bitcoincore_rpc_client),
             wt_sleeping_time_to_check_for_new_block_in_milliseconds,
-            required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         ) = (
             &self.wt_privkey,
             &self.initiator_peer,
@@ -1450,7 +1462,7 @@ impl Wt {
             &self.initiator_boomlet_tx_commit_signed_by_initiator_boomlet,
             &self.bitcoincore_rpc_client,
             &self.wt_sleeping_time_to_check_for_new_block_in_milliseconds,
-            &self.required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            &self.required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         ) else {
             unreachable_panic!("Assumed to have data of current state.");
         };
@@ -1520,7 +1532,7 @@ impl Wt {
                 "Expected the block height received from the Bitcoin full node to be correct according to consensus."
             );
 
-            if most_work_bitcoin_block_height >= BitcoinUtils::absolute_height_saturating_add(*initiator_peer_tx_commit_event_block_height, *required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer) {
+            if most_work_bitcoin_block_height >= BitcoinUtils::absolute_height_saturating_add(*initiator_peer_tx_commit_event_block_height, *required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers) {
                 break;
             }
 
@@ -1829,10 +1841,12 @@ impl Wt {
                         .check_correctness(
                             MagicCheck::Check,
                             TxIdCheck::Check(*withdrawal_tx_id),
-                            TimestampCheck::Check(BitcoinUtils::absolute_height_saturating_sub(
-                                most_work_bitcoin_block_height,
-                                *tolerance_in_blocks_from_creating_ping_to_receiving_all_pings_by_wt_and_having_sar_response_back_to_wt
-                            )),
+                            TimestampCheck::Check(
+                                BitcoinUtils::absolute_height_saturating_sub(
+                                    most_work_bitcoin_block_height,
+                                    *tolerance_in_blocks_from_creating_ping_to_receiving_all_pings_by_wt_and_having_sar_response_back_to_wt
+                                )
+                            ),
                             TimestampCheck::Check(most_work_bitcoin_block_height),
                             PingSeqNumCheck::Check(registered_boomlet_i_ping_seq_num),
                             ReachedMysteryFlagCheck::Check(boomlet_i_reached_mystery_flag),
@@ -2210,9 +2224,9 @@ impl Wt {
             let converted_boomlet_i_ping_signed_by_boomlet_i_collection =
                 boomlet_i_ping_signed_by_boomlet_i_collection
                     .iter()
-                    .map(|(other_wt_peer_id, boomlet_i_ping_signed_by_boomlet_i)| {
+                    .map(|(wt_peer_id, boomlet_i_ping_signed_by_boomlet_i)| {
                         (
-                            *other_wt_peer_id.get_boomlet_identity_pubkey(),
+                            *wt_peer_id.get_boomlet_identity_pubkey(),
                             boomlet_i_ping_signed_by_boomlet_i.clone(),
                         )
                     })

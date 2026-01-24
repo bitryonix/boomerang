@@ -9,7 +9,7 @@ use bitcoin_utils::BitcoinUtils;
 use bitcoincore_rpc::RpcApi;
 use miniscript::descriptor::Tr;
 use protocol::{
-    constructs::{MagicCheck, TimestampCheck, TxIdCheck},
+    constructs::{MagicCheck, PingSeqNumCheck, ReachedMysteryFlagCheck, TimestampCheck, TxIdCheck},
     magic::*,
     messages::withdrawal::{
         from_boomlet::to_niso::{
@@ -487,8 +487,17 @@ impl Niso {
             psbt_encrypted_by_initiator_boomlet_for_non_initiator_boomlet,
         ) = withdrawal_wt_non_initiator_niso_message_1.into_parts();
         // Unpack state data.
-        let (Some(boomerang_params), Some(bitcoincore_rpc_client), tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt, tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers) =
-            (&self.boomerang_params, &self.bitcoincore_rpc_client, &self.tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt, &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers)
+        let (
+            Some(boomerang_params),
+            Some(bitcoincore_rpc_client),
+            tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt,
+            tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers
+        ) = (
+            &self.boomerang_params,
+            &self.bitcoincore_rpc_client,
+            &self.tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt,
+            &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers
+        )
         else {
             unreachable_panic!("Assumed to have data of current state.");
         };
@@ -563,10 +572,12 @@ impl Niso {
                 ),
             "Failed to verify Boomlet's signature on initiator tx approval.",
         );
+
+        let initiator_boomlet_tx_id = initiator_boomlet_tx_approval.get_tx_id();
+
         // Check (5) wt_tx_approval for magic, and block stamp correctness as supposed to be.
         // Here we are checking if wt_tx_approval has been constructed correctly.
 
-        let initiator_boomlet_tx_id = initiator_boomlet_tx_approval.get_tx_id();
         traceable_unfold_or_error!(
             wt_tx_approval
                 .check_correctness(
@@ -1119,7 +1130,6 @@ impl Niso {
             Some(bitcoincore_rpc_client),
             tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
             tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
-            tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
         ) = (
             &self.boomerang_params,
             &self.withdrawal_tx_id,
@@ -1129,7 +1139,6 @@ impl Niso {
             &self.bitcoincore_rpc_client,
             &self.tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
             &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
-            &self.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
         )
         else {
             unreachable_panic!("Assumed to have data of current state.");
@@ -1220,7 +1229,7 @@ impl Niso {
                         TimestampCheck::Check(
                                 BitcoinUtils::absolute_height_saturating_sub(
                                     most_work_bitcoin_block_height,
-                                    *tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_non_initiator_peers,
+                                    *tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers,
                                 )
                         ),
                         TimestampCheck::Skip,
@@ -1614,8 +1623,16 @@ impl Niso {
                     MagicCheck::Check,
                     TxIdCheck::Check(*withdrawal_tx_id),
                     TimestampCheck::Check(*initiator_boomlet_tx_approval.get_event_block_height()),
-                    TimestampCheck::Check(min(BitcoinUtils::absolute_height_saturating_add(*initiator_boomlet_tx_approval.get_event_block_height(), *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt), most_work_bitcoin_block_height)
-                ))
+                    TimestampCheck::Check(
+                        min(
+                            BitcoinUtils::absolute_height_saturating_add(
+                                *initiator_boomlet_tx_approval.get_event_block_height(),
+                                *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt
+                            ),
+                            most_work_bitcoin_block_height
+                        )
+                    )
+                )
                 .map_err(error::ConsumeWithdrawalWtNisoMessage1Error::IncorrectWtTxApproval),
             "Watchtower's tx approval is incorrect.",
         );
@@ -1637,7 +1654,10 @@ impl Niso {
                         TxIdCheck::Check(*withdrawal_tx_id),
                         TimestampCheck::Check(
                             max(
-                                BitcoinUtils::absolute_height_saturating_sub(most_work_bitcoin_block_height, *tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer),
+                                BitcoinUtils::absolute_height_saturating_sub(
+                                    most_work_bitcoin_block_height,
+                                    *tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer
+                                ),
                                 *wt_tx_approval.get_event_block_height(),)
                         ),
                         TimestampCheck::Check(
@@ -1655,7 +1675,8 @@ impl Niso {
                     boomlet_i_tx_approval.check_correctness(
                         MagicCheck::Check,
                         TxIdCheck::Check(*withdrawal_tx_id),
-                        TimestampCheck::Check(max(
+                        TimestampCheck::Check(
+                            max(
                                 BitcoinUtils::absolute_height_saturating_sub(
                                     most_work_bitcoin_block_height,
                                     *tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_receiving_all_non_initiator_tx_approvals_by_initiator_peer
@@ -2214,13 +2235,13 @@ impl Niso {
             Some(withdrawal_tx_id),
             Some(bitcoincore_rpc_client),
             tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers,
-            required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         ) = (
             &self.boomerang_params,
             &self.withdrawal_tx_id,
             &self.bitcoincore_rpc_client,
             &self.tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers,
-            &self.required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer,
+            &self.required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers,
         )
         else {
             unreachable_panic!("Assumed to have data of current state.");
@@ -2302,7 +2323,7 @@ impl Niso {
                                 TimestampCheck::Check(
                                     BitcoinUtils::absolute_height_saturating_sub(
                                         most_work_bitcoin_block_height,
-                                        *required_minimum_distance_in_blocks_between_initiator_peer_tx_commitment_and_receiving_all_non_initiator_tx_commitment_by_initiator_peer
+                                        *required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers
                                     )
                                 ),
                             )
@@ -2790,15 +2811,90 @@ impl Niso {
         let (boomlet_i_reached_ping_signed_by_boomlet_i_collection,) =
             withdrawal_wt_niso_message_4.into_parts();
         // Unpack state data.
-        let (Some(boomerang_params), Some(withdrawal_psbt), Some(bitcoincore_rpc_client)) = (
+        let (
+            Some(boomerang_params),
+            Some(withdrawal_tx_id),
+            Some(withdrawal_psbt),
+            Some(bitcoincore_rpc_client),
+        ) = (
             &self.boomerang_params,
+            &self.withdrawal_tx_id,
             &self.withdrawal_psbt,
             &self.bitcoincore_rpc_client,
-        ) else {
+        )
+        else {
             unreachable_panic!("Assumed to have data of current state.");
         };
 
         // Do computation.
+        let most_work_bitcoin_block_height = traceable_unfold_or_error!(
+            absolute::Height::from_consensus(traceable_unfold_or_error!(
+                bitcoincore_rpc_client
+                    .get_block_count()
+                    .map_err(error::ConsumeWithdrawalWtNisoMessage4Error::BitcoinCoreRpcClient),
+                "Failed to get block count of the chain tip through Bitcoin Core RPC client.",
+            ) as u32)
+            .map_err(|_err| {
+                error::ConsumeWithdrawalWtNisoMessage4Error::MalfunctioningFullNode
+            }),
+            "Expected the block height received from the Bitcoin full node to be correct according to consensus."
+        );
+        let received_boomlet_identity_pubkeys_self_inclusive_collection =
+            boomlet_i_reached_ping_signed_by_boomlet_i_collection
+                .keys()
+                .copied()
+                .collect::<BTreeSet<_>>();
+        let registered_boomlet_identity_pubkeys_self_inclusive_collection = boomerang_params
+            .get_peer_ids_collection()
+            .iter()
+            .map(|peer_id| *peer_id.get_boomlet_identity_pubkey())
+            .collect::<BTreeSet<_>>();
+        // Check (1) if all peers are present in the received message.
+        if received_boomlet_identity_pubkeys_self_inclusive_collection
+            != registered_boomlet_identity_pubkeys_self_inclusive_collection
+        {
+            let err = error::ConsumeWithdrawalWtNisoMessage4Error::NotTheSamePeers;
+            error_log!(
+                err,
+                "Given peers are not the same as the ones in the Boomerang parameters.",
+            );
+            return Err(err);
+        }
+        boomlet_i_reached_ping_signed_by_boomlet_i_collection
+            .clone()
+            .into_iter()
+            .try_for_each(
+                |(boomlet_identity_pubkey, boomlet_i_reached_ping_signed_by_boomlet_i)| {
+                    // Check (2) all the signatures by pertinent boomlets.
+                    let boomlet_i_reached_ping = traceable_unfold_or_error!(
+                        boomlet_i_reached_ping_signed_by_boomlet_i
+                            .clone()
+                            .verify_and_unbundle(&boomlet_identity_pubkey)
+                            .map_err(
+                                error::ConsumeWithdrawalWtNisoMessage4Error::SignatureVerification
+                            ),
+                        "Failed to verify other Boomlet's signature on reached ack.",
+                    );
+                    // Check (3) if the received pings are constructed correctly.
+                    traceable_unfold_or_error!(
+                        boomlet_i_reached_ping
+                            .check_correctness(
+                                MagicCheck::Check,
+                                TxIdCheck::Check(*withdrawal_tx_id),
+                                TimestampCheck::Skip,
+                                TimestampCheck::Check(most_work_bitcoin_block_height),
+                                PingSeqNumCheck::Skip,
+                                ReachedMysteryFlagCheck::Check(true),
+                            )
+                            .map_err(
+                                error::ConsumeWithdrawalWtNisoMessage4Error::IncorrectReachedPing
+                            ),
+                        "Boomlet's reached ping is incorrect.",
+                    );
+
+                    Ok(())
+                },
+            )?;
         let mut withdrawal_psbt = withdrawal_psbt.clone();
         let boomerang_descriptor: Tr<XOnlyPublicKey> = traceable_unfold_or_panic!(
             Tr::from_str(boomerang_params.get_boomerang_descriptor()),

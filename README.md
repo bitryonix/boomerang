@@ -1,8 +1,15 @@
-# Boomerang: A Bitcoin Cold Storage with Duress Protection [Proof of Concept implementation]
+# Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage Meets Integrated Duress Protection
 
 Boomerang is a bitcoin cold storage protocol that provides duress protection via a non-deterministic withdrawal mechanism, interweaved with duress checks.
 This is the proof-of-concept (POC) implementation of boomerang protocol. All entities are written in rust.
-For more info on the design please refer to [boomerang design repo](https://github.com/bitryonix/boomerang_design)
+For more info on the design please refer to [boomerang design repo](https://github.com/bitryonix/boomerang_design).
+
+## Table of Contents
+
+  - [Setup and withdrawal steps](#setup-and-withdrawal-steps)
+  - [Run](#run)
+  - [Architecture](#architecture)
+  - [Roadmap](#roadmap)
 
 ## Setup and withdrawal steps
 
@@ -16,14 +23,19 @@ We have tested and ran this code on linux and mac.
 cargo run --bin poc
 ```
 
+## Architecture
+
+Decisions on the architecture of the POC, are documented in the [Architecture.md file](Architecture.md).
+
 ## Roadmap
 
 - [x] Writing the POC in rust.
 - [ ] Dynamic simulation of the protocol to optimize parameters, given delays and non-linearity.
-- [ ] Implementing the java card applet (boomlet).
+- [ ] Implementing the java card applet (Boomlet).
+- [ ] Observing and deciding if java card can handle the expectations.
 - [ ] Implementing the ST software and hardware.
 - [ ] Implementing ancillaries.
 - [ ] Implementing network layer.
-- [ ] Implementing proper error handling.
+- [ ] Implementing proper error handling and fallback scenarios.
 - [ ] Adding networking and CLI to the code.
 - [ ] Adding GUI.

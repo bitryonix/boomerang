@@ -4,7 +4,7 @@ use bitcoincore_rpc::Client;
 use cryptography::Cryptography;
 use protocol::{
     constructs::{
-        BoomerangParams, PeerAddress, PeerId, SharedStateBackupDone, SharedStateBoomerangParams,
+        BoomerangParams, PeerId, SharedStateBackupDone, SharedStateBoomerangParams,
         SharedStateSarFinalization,
     },
     magic::*,
@@ -236,11 +236,7 @@ impl Niso {
         ) = setup_niso_input_2.into_parts();
 
         // Unpack state data.
-        let (Some(own_peer_id), Some(own_peer_tor_address_signed_by_boomlet)) =
-            (&self.peer_id, &self.peer_tor_address_signed_by_boomlet)
-        else {
-            unreachable_panic!("Assumed to have data of current state.");
-        };
+        {}
 
         // Do computation.
 
@@ -263,17 +259,6 @@ impl Niso {
                 );
                 Ok(())
             })?;
-
-        // Check (2) niso checks if its peer id is included in received peer addresses.
-        let own_peer_address = PeerAddress::new(
-            own_peer_id.clone(),
-            own_peer_tor_address_signed_by_boomlet.clone(),
-        );
-        if !peer_addresses_self_inclusive_collection.contains(&own_peer_address) {
-            let err = error::ConsumeSetupNisoInput2Error::SelfNotIncludedInReceivedPeerAddresses;
-            error_log!(err, "Boomlet is not included in Boomerang parameters.");
-            return Err(err);
-        }
 
         // Change State.
         self.state = State::Setup_AfterSetupNisoInput2_SetupWtDataReceived;
