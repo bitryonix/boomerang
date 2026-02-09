@@ -1,11 +1,13 @@
-# Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage Meets Integrated Duress Protection
+# Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage With Built-in Coercion Resistance
 
-Boomerang is a bitcoin cold storage protocol that provides duress protection via a non-deterministic withdrawal mechanism, interweaved with duress checks.
+Boomerang is a bitcoin cold storage protocol that provides coercion resistance via a non-deterministic withdrawal mechanism, interweaved with duress checks.
 This is the proof-of-concept (POC) implementation of boomerang protocol. All entities are written in rust.
 For more info on the design please refer to [boomerang design repo](https://github.com/bitryonix/boomerang_design).
 
 ## Table of Contents
 
+- [Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage With Built-in Coercion Resistance](#proof-of-concept-implementation-for-boomerang-bitcoin-cold-storage-with-built-in-coercion-resistance)
+  - [Table of Contents](#table-of-contents)
   - [Setup and withdrawal steps](#setup-and-withdrawal-steps)
   - [Run](#run)
   - [Architecture](#architecture)
