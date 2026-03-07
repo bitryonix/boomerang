@@ -32,7 +32,7 @@ impl BoomerangDescriptor {
         let n = peer_ids_collection.len();
         let mut normal_keys = peer_ids_collection
             .iter()
-            .map(|peer_id| peer_id.get_boomlet_identity_pubkey().to_x_only_pubkey())
+            .map(|peer_id| peer_id.get_normal_pubkey().to_x_only_pubkey())
             .collect::<Vec<_>>();
         normal_keys.sort();
         let mut boom_keys = peer_ids_collection
