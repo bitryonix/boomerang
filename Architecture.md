@@ -26,50 +26,50 @@ Shared protocol types live in:
 
 These crates are transport-agnostic. They do not know whether the orchestration is step-by-step or networked.
 
-### `poc_steps`
+### `poc-steps`
 
-`poc_steps` is the linear, explicit runner. It executes setup and withdrawal by calling `produce_*` and `consume_*` methods directly in the same order as the design diagrams.
+`poc-steps` lives at `poc/steps/`. It is the linear, explicit runner. It executes setup and withdrawal by calling `produce_*` and `consume_*` methods directly in the same order as the design diagrams.
 
 Key files:
 
-- `poc_steps/src/config.rs`
+- `poc/steps/src/config.rs`
   - Static configuration for the runner.
-- `poc_steps/src/setup.rs`
+- `poc/steps/src/setup.rs`
   - Explicit setup sequence.
-- `poc_steps/src/withdrawal.rs`
+- `poc/steps/src/withdrawal.rs`
   - Explicit withdrawal sequence.
 
-Use `poc_steps` when the goal is to inspect the exact protocol sequence in a human-readable order.
+Use `poc-steps` when the goal is to inspect the exact protocol sequence in a human-readable order.
 
-### `poc_networked`
+### `poc-networked`
 
-`poc_networked` is the automated runner. It wraps the same core entities in an independent orchestration layer built on Tokio channels and actors.
+`poc-networked` lives at `poc/networked/`. It is the automated runner. It wraps the same core entities in an independent orchestration layer built on Tokio channels and actors.
 
 Key files:
 
-- `poc_networked/src/config.rs`
+- `poc/networked/src/config.rs`
   - Static network and withdrawal configuration.
-- `poc_networked/src/actors/peer_actor.rs`
+- `poc/networked/src/actors/peer_actor.rs`
   - Drives one peer and its local entities.
-- `poc_networked/src/actors/wt_actor.rs`
+- `poc/networked/src/actors/wt_actor.rs`
   - Drives the watchtower.
-- `poc_networked/src/actors/sar_actor.rs`
+- `poc/networked/src/actors/sar_actor.rs`
   - Drives each SAR.
-- `poc_networked/src/transport.rs`
+- `poc/networked/src/transport.rs`
   - Inter-actor mailbox primitives and peer directory.
-- `poc_networked/src/local_actor.rs`
+- `poc/networked/src/local_actor.rs`
   - Channel-backed worker handles for peer-local entities.
-- `poc_networked/src/envelopes.rs`
+- `poc/networked/src/envelopes.rs`
   - Transport envelopes used between orchestration actors.
 
-Use `poc_networked` when the goal is to exercise the protocol as a concurrent, automatically progressing system.
+Use `poc-networked` when the goal is to exercise the protocol as a concurrent, automatically progressing system.
 
 ## Configuration
 
 Both runnable PoCs now use dedicated config modules:
 
-- `poc_steps/src/config.rs`
-- `poc_networked/src/config.rs`
+- `poc/steps/src/config.rs`
+- `poc/networked/src/config.rs`
 
 This keeps runtime parameters, milestone blocks, withdrawal constants, and `bitcoind` path resolution out of the runner entrypoint logic.
 
@@ -88,11 +88,11 @@ Shared messages and message collections are represented in `protocol`, including
 
 ## Transport and Isolation
 
-### In `poc_steps`
+### In `poc-steps`
 
 There is no independent transport layer. The runner directly invokes entity methods in the required order. This keeps the protocol steps visible and easy to trace back to the design diagrams.
 
-### In `poc_networked`
+### In `poc-networked`
 
 There are two transport boundaries:
 
@@ -112,16 +112,16 @@ The repository uses `tracing` for runtime visibility.
 
 In practice:
 
-- `poc_steps` is best for step-by-step protocol inspection.
-- `poc_networked` is best for actor-level and transport-level tracing of an automated run.
+- `poc-steps` is best for step-by-step protocol inspection.
+- `poc-networked` is best for actor-level and transport-level tracing of an automated run.
 
 ## Why Two PoCs Exist
 
 The two runners solve different problems:
 
-- `poc_steps`
+- `poc-steps`
   - Optimizes for protocol readability and direct correspondence with the message diagrams.
-- `poc_networked`
+- `poc-networked`
   - Optimizes for concurrency, automatic execution, and separation between orchestration and core protocol logic.
 
 Keeping both is intentional. The step runner is the clearest reference implementation of the flow, while the networked runner is the clearest reference implementation of a channel-based orchestration layer around the same protocol.

@@ -11,8 +11,8 @@ members = [
     "st",
     "peer",
     "phone",
-    "poc_steps",
-    "poc_networked",
+    "poc/steps",
+    "poc/networked",
     "tracing_utils",
     "bitcoin_utils",
     "cryptography"

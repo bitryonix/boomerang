@@ -98,8 +98,7 @@ impl Boomlet {
         ]);
         // Create Peer ID.
         let peer_id = PeerId::new(boom_pubkey, normal_pubkey, boomlet_identity_pubkey);
-        // TODO: Replace with real Tor implementation.
-        // Generate TOR credentials
+        // Generate real onion-v3 identity material.
         let peer_tor_secret_key = TorSecretKey::new_random();
         let peer_tor_address = peer_tor_secret_key.get_address();
         // Create shared symmetric keys with SARs.

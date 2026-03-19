@@ -270,6 +270,10 @@ impl Niso {
         self.boomerang_params.clone()
     }
 
+    pub fn get_peer_tor_secret_key(&self) -> Option<TorSecretKey> {
+        self.peer_tor_secret_key.clone()
+    }
+
     pub fn get_wt_peer_id(&self) -> Option<WtPeerId> {
         let (Some(peer_id), Some(peer_tor_address), Some(boomerang_params)) = (
             &self.peer_id,
@@ -285,5 +289,53 @@ impl Niso {
             peer_tor_address.clone(),
             boomerang_params_fingerprint,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{Ipv4Addr, SocketAddrV4};
+
+    use cryptography::{PrivateKey, SignedData};
+    use protocol::{
+        constructs::{BitcoinCoreAuth, PeerId},
+        messages::setup::{
+            from_boomlet::to_niso::SetupBoomletNisoMessage1, from_user::to_niso::SetupNisoInput1,
+        },
+    };
+
+    use super::*;
+
+    #[test]
+    fn exposes_peer_tor_secret_key_received_from_boomlet() {
+        let mut niso = Niso::create(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let boomlet_identity_privkey = PrivateKey::generate();
+        let boom_pubkey = PrivateKey::generate().derive_public_key();
+        let normal_pubkey = PrivateKey::generate().derive_public_key();
+        let peer_tor_secret_key = TorSecretKey::from_seed_bytes([21u8; 32]);
+        let peer_tor_address_signed_by_boomlet = SignedData::sign_and_bundle(
+            peer_tor_secret_key.get_address(),
+            &boomlet_identity_privkey,
+        );
+        let peer_id = PeerId::new(
+            boom_pubkey,
+            normal_pubkey,
+            boomlet_identity_privkey.derive_public_key(),
+        );
+
+        niso.consume_setup_niso_input_1(SetupNisoInput1::new(
+            bitcoin::Network::Regtest,
+            SocketAddrV4::new(Ipv4Addr::LOCALHOST, 18443),
+            BitcoinCoreAuth::None,
+        ))
+        .unwrap();
+        niso.consume_setup_boomlet_niso_message_1(SetupBoomletNisoMessage1::new(
+            peer_id,
+            peer_tor_secret_key.clone(),
+            peer_tor_address_signed_by_boomlet,
+        ))
+        .unwrap();
+
+        assert_eq!(niso.get_peer_tor_secret_key(), Some(peer_tor_secret_key));
     }
 }

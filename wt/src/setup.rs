@@ -36,7 +36,7 @@ use crate::{
 /// Setup Section ///
 /////////////////////
 impl Wt {
-    /// Initialize WT. Generate keypair, TOR credentials, and Bitcoin RPC client.
+    /// Initialize WT. Generate keypair, Tor identity material, and Bitcoin RPC client.
     #[instrument(
         level = Level::DEBUG,
         fields(actor = TRACING_ACTOR, layer = TRACING_FIELD_LAYER_PROTOCOL, ceremony = TRACING_FIELD_CEREMONY_SETUP),
@@ -63,8 +63,7 @@ impl Wt {
         // Generate keypair.
         let wt_privkey = PrivateKey::generate();
         let wt_pubkey = wt_privkey.derive_public_key();
-        // TODO: Use real Tor implementation.
-        // Generate TOR credentials.
+        // Generate real onion-v3 identity material.
         let wt_tor_secret_key = TorSecretKey::new_random();
         let wt_tor_address = wt_tor_secret_key.get_address();
         let wt_id = WtId::new(wt_pubkey, wt_tor_address);
@@ -79,6 +78,7 @@ impl Wt {
         self.state = State::Setup_AfterLoad_SetupReadyToRegisterService;
         self.wt_privkey = Some(wt_privkey);
         self.wt_pubkey = Some(wt_pubkey);
+        self.wt_tor_secret_key = Some(wt_tor_secret_key);
         self.wt_id = Some(wt_id);
         self.bitcoincore_rpc_client = Some(bitcoincore_rpc_client);
         // Log finish.

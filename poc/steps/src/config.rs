@@ -12,7 +12,8 @@ compile_error!("poc-steps only supports Linux and macOS bitcoind binaries.");
 fn default_bitcoind_executable_path() -> String {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("poc_steps crate should live under the workspace root");
+        .and_then(Path::parent)
+        .expect("poc-steps crate should live under poc/ within the workspace root");
     workspace_root
         .join(DEFAULT_BITCOIND_EXECUTABLE_RELATIVE_PATH)
         .to_string_lossy()

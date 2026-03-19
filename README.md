@@ -6,12 +6,12 @@ For the protocol design itself, see the [boomerang design repository](https://gi
 
 ## Workspace Overview
 
-This workspace contains two runnable proof-of-concept binaries and a set of core protocol crates:
+This workspace contains two runnable proof-of-concept binaries grouped under `poc/` and a set of core protocol crates:
 
-- `poc_steps`
+- `poc/steps`
   - A deterministic, step-by-step runner that follows the setup and withdrawal message diagrams directly.
   - Useful when you want to inspect the protocol flow in a linear, explicit way.
-- `poc_networked`
+- `poc/networked`
   - A networked runner that executes the protocol automatically across one WT, five SARs, and five peers.
   - Uses an independent Tokio-channel transport/orchestration layer around the core protocol entities.
 - Core crates
@@ -23,9 +23,9 @@ This workspace contains two runnable proof-of-concept binaries and a set of core
 
 `poc-steps` executes the protocol in the same order as the design diagrams, with the orchestration written out explicitly.
 
-- Entry point: `poc_steps/src/main.rs`
-- Config: `poc_steps/src/config.rs`
-- Detailed docs: [poc_steps/README.md](poc_steps/README.md)
+- Entry point: `poc/steps/src/main.rs`
+- Config: `poc/steps/src/config.rs`
+- Detailed docs: [poc/steps/README.md](poc/steps/README.md)
 
 Run it with:
 
@@ -37,9 +37,9 @@ cargo run -p poc-steps
 
 `poc-networked` runs the same protocol automatically through an independent actor/transport layer. Cross-entity communication uses Tokio channels, and peer-local entities are also isolated behind channel-backed workers.
 
-- Entry point: `poc_networked/src/main.rs`
-- Config: `poc_networked/src/config.rs`
-- Detailed docs: [poc_networked/README.md](poc_networked/README.md)
+- Entry point: `poc/networked/src/main.rs`
+- Config: `poc/networked/src/config.rs`
+- Detailed docs: [poc/networked/README.md](poc/networked/README.md)
 
 Run it with:
 
@@ -49,9 +49,11 @@ cargo run -p poc-networked
 
 ## Repository Layout
 
-- `poc_steps/`
+- `poc/`
+  - All runnable PoC environments.
+- `poc/steps/`
   - Step-by-step PoC runner.
-- `poc_networked/`
+- `poc/networked/`
   - Networked PoC runner.
 - `protocol/`
   - Shared protocol messages and constructs.

@@ -4,8 +4,8 @@ use bitcoin::Txid;
 use bitcoincore_rpc::Client;
 use cryptography::{PrivateKey, PublicKey, SignedData, SymmetricCiphertext, SymmetricKey};
 use protocol::constructs::{
-    DuressPlaceholder, InitiatorBoomletData, Ping, SarId, TxApproval, TxCommit, WtId, WtPeerId,
-    WtServiceFeePaymentInfo, WtServiceFeePaymentReceipt,
+    DuressPlaceholder, InitiatorBoomletData, Ping, SarId, TorSecretKey, TxApproval, TxCommit, WtId,
+    WtPeerId, WtServiceFeePaymentInfo, WtServiceFeePaymentReceipt,
 };
 use tracing::{Level, instrument};
 
@@ -44,6 +44,7 @@ pub struct Wt {
     pub(super) state: State,
     pub(super) wt_privkey: Option<PrivateKey>,
     pub(super) wt_pubkey: Option<PublicKey>,
+    pub(super) wt_tor_secret_key: Option<TorSecretKey>,
     pub(super) wt_id: Option<WtId>,
     pub(super) boomerang_peers_collection: Option<BTreeSet<WtPeerId>>,
     pub(super) boomerang_peers_identity_pubkey_to_id_mapping: Option<BTreeMap<PublicKey, WtPeerId>>,
@@ -132,6 +133,7 @@ impl Wt {
             state: State::Setup_AfterCreation_BlankSlate,
             wt_privkey: None,
             wt_pubkey: None,
+            wt_tor_secret_key: None,
             wt_id: None,
             boomerang_peers_collection: None,
             boomerang_peers_identity_pubkey_to_id_mapping: None,
@@ -181,5 +183,29 @@ impl Wt {
 
     pub fn get_wt_id(&self) -> Option<WtId> {
         self.wt_id.clone()
+    }
+
+    pub fn get_tor_secret_key(&self) -> Option<TorSecretKey> {
+        self.wt_tor_secret_key.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use protocol::constructs::BitcoinCoreAuth;
+
+    #[test]
+    fn initialize_retains_real_tor_secret_key() {
+        let mut wt = Wt::create(0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        wt.initialize("http://127.0.0.1:18443".to_string(), BitcoinCoreAuth::None)
+            .unwrap();
+
+        let tor_secret_key = wt.get_tor_secret_key().unwrap();
+        let tor_address = tor_secret_key.get_address();
+        let wt_id = wt.get_wt_id().unwrap();
+
+        assert_eq!(wt_id.get_wt_tor_address(), &tor_address);
     }
 }

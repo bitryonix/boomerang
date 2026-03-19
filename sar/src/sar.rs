@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use cryptography::{PrivateKey, PublicKey, SymmetricCiphertext, SymmetricKey};
 use protocol::constructs::{
     DuressPlaceholder, DynamicDoxingData, SarId, SarServiceFeePaymentInfo,
-    SarServiceFeePaymentReceipt, StaticDoxingData,
+    SarServiceFeePaymentReceipt, StaticDoxingData, TorSecretKey,
 };
 use tracing::{Level, instrument};
 
@@ -33,6 +33,7 @@ pub struct Sar {
     pub(super) state: State,
     pub(super) sar_privkey: Option<PrivateKey>,
     pub(super) sar_pubkey: Option<PublicKey>,
+    pub(super) sar_tor_secret_key: Option<TorSecretKey>,
     pub(super) sar_id: Option<SarId>,
     pub(super) doxing_data_identifier: Option<[u8; 32]>,
     pub(crate) sar_service_fee_payment_info: Option<SarServiceFeePaymentInfo>,
@@ -62,6 +63,7 @@ impl Sar {
             state: State::Setup_AfterCreation_BlankSlate,
             sar_privkey: None,
             sar_pubkey: None,
+            sar_tor_secret_key: None,
             sar_id: None,
             doxing_data_identifier: None,
             sar_service_fee_payment_info: None,
@@ -82,5 +84,27 @@ impl Sar {
 
     pub fn get_sar_id(&self) -> Option<SarId> {
         self.sar_id.clone()
+    }
+
+    pub fn get_tor_secret_key(&self) -> Option<TorSecretKey> {
+        self.sar_tor_secret_key.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initialize_retains_real_tor_secret_key() {
+        let mut sar = Sar::create();
+
+        sar.initialize().unwrap();
+
+        let tor_secret_key = sar.get_tor_secret_key().unwrap();
+        let tor_address = tor_secret_key.get_address();
+        let sar_id = sar.get_sar_id().unwrap();
+
+        assert_eq!(sar_id.get_sar_tor_address(), &tor_address);
     }
 }

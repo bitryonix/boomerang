@@ -4,17 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tracing_utils = {path = "../tracing_utils"}
-boomlet = {path = "../boomlet"}
-iso = {path = "../iso"}
-niso = {path = "../niso"}
-wt = {path = "../wt"}
-sar = {path = "../sar"}
-st = {path = "../st"}
-peer = {path = "../peer"}
-phone = {path = "../phone"}
-protocol = {path = "../protocol"}
-cryptography = {path = "../cryptography"}
+tracing_utils = {path = "../../tracing_utils"}
+boomlet = {path = "../../boomlet"}
+iso = {path = "../../iso"}
+niso = {path = "../../niso"}
+wt = {path = "../../wt"}
+sar = {path = "../../sar"}
+st = {path = "../../st"}
+peer = {path = "../../peer"}
+phone = {path = "../../phone"}
+protocol = {path = "../../protocol"}
+cryptography = {path = "../../cryptography"}
 bitcoincore-rpc = "0.19.0"
 corepc-node = { version = "0.8.0", features = ["29_0"] }
 bip39 = "2.1.0"

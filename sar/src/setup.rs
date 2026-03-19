@@ -27,7 +27,7 @@ use crate::{
 /// Setup Section ///
 /////////////////////
 impl Sar {
-    /// Initialize SAR: Generates SAR key and TOR credentials.
+    /// Initialize SAR: generates SAR key and real onion-v3 identity material.
     #[instrument(
         level = Level::DEBUG,
         fields(actor = TRACING_ACTOR, layer = TRACING_FIELD_LAYER_PROTOCOL, ceremony = TRACING_FIELD_CEREMONY_SETUP),
@@ -49,7 +49,6 @@ impl Sar {
         // Do computation.
         let sar_privkey = PrivateKey::generate();
         let sar_pubkey = sar_privkey.derive_public_key();
-        // TODO: Use real Tor implementation.
         let sar_tor_secret_key = TorSecretKey::new_random();
         let sar_tor_address = sar_tor_secret_key.get_address();
         let sar_id = SarId::new(sar_pubkey, sar_tor_address);
@@ -61,6 +60,7 @@ impl Sar {
         self.state = State::Setup_AfterLoad_SetupReadyToRegisterService;
         self.sar_privkey = Some(sar_privkey);
         self.sar_pubkey = Some(sar_pubkey);
+        self.sar_tor_secret_key = Some(sar_tor_secret_key);
         self.sar_id = Some(sar_id);
         self.search_and_rescue_mode = Some(search_and_rescue_mode);
         self.seen_ivs_collection_for_positive_duress_signals =

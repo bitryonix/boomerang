@@ -1,11 +1,24 @@
+use std::path::Path;
+
 use bitcoin::Network;
 
 #[cfg(target_os = "linux")]
-pub const DEFAULT_BITCOIND_EXECUTABLE_PATH: &str = "bitcoin-29.0/bitcoind_linux";
+pub const DEFAULT_BITCOIND_EXECUTABLE_RELATIVE_PATH: &str = "bitcoin-29.0/bitcoind_linux";
 #[cfg(target_os = "macos")]
-pub const DEFAULT_BITCOIND_EXECUTABLE_PATH: &str = "bitcoin-29.0/bitcoind_mac";
+pub const DEFAULT_BITCOIND_EXECUTABLE_RELATIVE_PATH: &str = "bitcoin-29.0/bitcoind_mac";
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-compile_error!("networked-poc only supports Linux and macOS bitcoind binaries.");
+compile_error!("poc-networked only supports Linux and macOS bitcoind binaries.");
+
+fn default_bitcoind_executable_path() -> String {
+    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("poc-networked crate should live under poc/ within the workspace root");
+    workspace_root
+        .join(DEFAULT_BITCOIND_EXECUTABLE_RELATIVE_PATH)
+        .to_string_lossy()
+        .into_owned()
+}
 
 /// All static parameters needed to run one Boomerang network instance.
 #[derive(Clone)]
@@ -60,7 +73,7 @@ impl Default for BoomerangNetworkConfig {
     fn default() -> Self {
         Self {
             network: Network::Regtest,
-            bitcoind_executable_path: DEFAULT_BITCOIND_EXECUTABLE_PATH.to_string(),
+            bitcoind_executable_path: default_bitcoind_executable_path(),
             milestone_block_0: 200,
             milestone_block_1: 500,
             milestone_block_2: 550,
