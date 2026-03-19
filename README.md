@@ -1,43 +1,83 @@
-# Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage With Built-in Coercion Resistance
+# Boomerang Proof of Concept
 
-Boomerang is a bitcoin cold storage protocol that provides coercion resistance via a non-deterministic withdrawal mechanism, interweaved with duress checks.
-This is the proof-of-concept (POC) implementation of boomerang protocol. All entities are written in rust.
-For more info on the design please refer to [boomerang design repo](https://github.com/bitryonix/boomerang_design).
+Boomerang is a Bitcoin cold-storage protocol with built-in coercion resistance. This repository is the Rust proof-of-concept implementation of the protocol and its execution environments.
 
-## Table of Contents
+For the protocol design itself, see the [boomerang design repository](https://github.com/bitryonix/boomerang_design).
 
-- [Proof of Concept Implementation for Boomerang: Bitcoin Cold Storage With Built-in Coercion Resistance](#proof-of-concept-implementation-for-boomerang-bitcoin-cold-storage-with-built-in-coercion-resistance)
-  - [Table of Contents](#table-of-contents)
-  - [Setup and withdrawal steps](#setup-and-withdrawal-steps)
-  - [Run](#run)
-  - [Architecture](#architecture)
-  - [Roadmap](#roadmap)
+## Workspace Overview
 
-## Setup and withdrawal steps
+This workspace contains two runnable proof-of-concept binaries and a set of core protocol crates:
 
-All steps are laid out clearly in [setup.rs](poc/src/setup.rs) and [withdrawal.rs](poc/src/withdrawal.rs) files, exactly following the design message diagrams of [setup](https://github.com/bitryonix/boomerang_design/blob/main/setup/setup_diagram_without_states.svg), [initiator withdrawal](https://github.com/bitryonix/boomerang_design/blob/main/withdrawal/initiator_withdrawal_diagram_without_states.svg) and [non-initiator withdrawal](https://github.com/bitryonix/boomerang_design/blob/main/withdrawal/non_initiator_withdrawal_diagram_without_states.svg) design files.  
+- `poc_steps`
+  - A deterministic, step-by-step runner that follows the setup and withdrawal message diagrams directly.
+  - Useful when you want to inspect the protocol flow in a linear, explicit way.
+- `poc_networked`
+  - A networked runner that executes the protocol automatically across one WT, five SARs, and five peers.
+  - Uses an independent Tokio-channel transport/orchestration layer around the core protocol entities.
+- Core crates
+  - `peer`, `phone`, `iso`, `niso`, `boomlet`, `wt`, `sar`, `st`, `protocol`, `cryptography`, and supporting utilities.
 
-## Run
+## Runners
 
-We have tested and ran this code on linux and mac.
+### `poc-steps`
+
+`poc-steps` executes the protocol in the same order as the design diagrams, with the orchestration written out explicitly.
+
+- Entry point: `poc_steps/src/main.rs`
+- Config: `poc_steps/src/config.rs`
+- Detailed docs: [poc_steps/README.md](poc_steps/README.md)
+
+Run it with:
 
 ```bash
-cargo run --bin poc
+cargo run -p poc-steps
 ```
+
+### `poc-networked`
+
+`poc-networked` runs the same protocol automatically through an independent actor/transport layer. Cross-entity communication uses Tokio channels, and peer-local entities are also isolated behind channel-backed workers.
+
+- Entry point: `poc_networked/src/main.rs`
+- Config: `poc_networked/src/config.rs`
+- Detailed docs: [poc_networked/README.md](poc_networked/README.md)
+
+Run it with:
+
+```bash
+cargo run -p poc-networked
+```
+
+## Repository Layout
+
+- `poc_steps/`
+  - Step-by-step PoC runner.
+- `poc_networked/`
+  - Networked PoC runner.
+- `protocol/`
+  - Shared protocol messages and constructs.
+- `peer/`, `phone/`, `iso/`, `niso/`, `boomlet/`, `wt/`, `sar/`, `st/`
+  - Core protocol entities.
+- `cryptography/`
+  - Shared cryptographic primitives and helpers.
+- `bitcoin-29.0/`
+  - Bundled `bitcoind` binaries used by the PoC runners on supported platforms.
+
+## Platform Support
+
+The PoC runners currently support Linux and macOS through the bundled `bitcoind` binaries in `bitcoin-29.0/`.
 
 ## Architecture
 
-Decisions on the architecture of the POC, are documented in the [Architecture.md file](Architecture.md).
+Architectural decisions are documented in [Architecture.md](Architecture.md).
 
 ## Roadmap
 
-- [x] Writing the POC in rust.
-- [ ] Dynamic simulation of the protocol to optimize parameters, given delays and non-linearity.
-- [ ] Implementing the java card applet (Boomlet).
-- [ ] Observing and deciding if java card can handle the expectations.
-- [ ] Implementing the ST software and hardware.
-- [ ] Implementing ancillaries.
-- [ ] Implementing network layer.
-- [ ] Implementing proper error handling and fallback scenarios.
-- [ ] Adding networking and CLI to the code.
-- [ ] Adding GUI.
+- [x] Core PoC implementation in Rust
+- [x] Step-by-step execution runner
+- [x] Networked execution runner with independent Tokio-channel transport layer
+- [ ] Dynamic simulation for parameter tuning under realistic delays and non-linearity
+- [ ] Java Card Boomlet implementation
+- [ ] ST software and hardware implementation
+- [ ] Ancillary services and operational tooling
+- [ ] Robust error handling and fallback flows
+- [ ] CLI and GUI layers

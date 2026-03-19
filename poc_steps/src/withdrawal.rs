@@ -1,6 +1,9 @@
 use std::{str::FromStr, thread};
 
-use crate::setup::BoomerangEntities;
+use crate::{
+    config::{BoomerangNetworkConfig, WithdrawalConfig},
+    setup::BoomerangEntities,
+};
 use bitcoin::{
     Address, Amount, Network, PublicKey, XOnlyPublicKey,
     key::{Keypair, Secp256k1, rand::thread_rng},
@@ -11,19 +14,27 @@ use protocol::messages::{BranchingMessage2, MetadataAttachedMessage, Parcel};
 use tokio::time::{Duration, sleep};
 use tracing::debug;
 
-#[allow(clippy::too_many_arguments)]
 pub async fn run(
     boomerang_entities: BoomerangEntities,
-    initial_miner_num_blocks_to_mine: u64,
-    miner_task_sleeping_time_in_milliseconds: u64,
-    deposit_amount_to_boomerang_address_in_int_btc: u64,
-    miner_num_blocks_to_mine_for_deposit_transaction_to_be_mined: u64,
-    absolute_locktime_for_withdrawal_transaction: u64,
-    withdrawal_transaction_amount_in_f64_btc: f64,
-    // These two have just presentational purposes and do not affect the function.
-    min_tries_for_digging_game_in_blocks: u32,
-    max_tries_for_digging_game_in_blocks: u32,
+    boomerang_config: &BoomerangNetworkConfig,
+    withdrawal_config: &WithdrawalConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let initial_miner_num_blocks_to_mine = withdrawal_config.initial_miner_num_blocks_to_mine;
+    let miner_task_sleeping_time_in_milliseconds =
+        withdrawal_config.miner_task_sleeping_time_in_milliseconds;
+    let deposit_amount_to_boomerang_address_in_int_btc =
+        withdrawal_config.deposit_amount_to_boomerang_address_in_int_btc;
+    let miner_num_blocks_to_mine_for_deposit_transaction_to_be_mined =
+        withdrawal_config.miner_num_blocks_to_mine_for_deposit_transaction_to_be_mined;
+    let absolute_locktime_for_withdrawal_transaction =
+        withdrawal_config.absolute_locktime_for_withdrawal_transaction;
+    let withdrawal_transaction_amount_in_f64_btc =
+        withdrawal_config.withdrawal_transaction_amount_in_f64_btc;
+    let min_tries_for_digging_game_in_blocks =
+        boomerang_config.min_tries_for_digging_game_in_blocks;
+    let max_tries_for_digging_game_in_blocks =
+        boomerang_config.max_tries_for_digging_game_in_blocks;
+
     // We now enter withdrawal.
     let BoomerangEntities {
         bitcoin_node,
@@ -2398,10 +2409,10 @@ pub async fn run(
         ping_pong_loop_counter += 1;
     }
     println!(
-    "Number of iteration in digging game:  {} <= {} <= {}",
-    min_tries_for_digging_game_in_blocks,
-    ping_pong_loop_counter - 1,
-    max_tries_for_digging_game_in_blocks
+        "Number of iteration in digging game:  {} <= {} <= {}",
+        min_tries_for_digging_game_in_blocks,
+        ping_pong_loop_counter - 1,
+        max_tries_for_digging_game_in_blocks
     );
     let current_block = miner.get_block_count();
     println!(

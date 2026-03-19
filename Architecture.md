@@ -1,64 +1,127 @@
 # Architecture
 
-This document is produced to help you understand the decisions that implementation has made on how to handle certain issues and implement certain features. This does not cover the logic of Boomerang protocol itself.
+This document explains how the repository is organized and how the proof-of-concept runners are layered around the core Boomerang protocol entities. It does not try to restate the protocol design itself.
 
-## Table of Contents
+## Goals
 
-- [Architecture](#architecture)
-  - [Table of Contents](#table-of-contents)
-  - [Logging](#logging)
-  - [Protocol Structures](#protocol-structures)
-    - [Messages](#messages)
-    - [Constructs](#constructs)
-  - [Cryptography](#cryptography)
-  - [Message Passing](#message-passing)
+The workspace is organized around a few constraints:
 
-## Logging
+- Keep the core protocol entities independent from any specific transport.
+- Preserve the protocol's message-in / message-out structure.
+- Support both a deterministic step runner and a networked runner without forking core logic.
+- Make orchestration changes happen in PoC crates, not in the core entity crates.
 
-Implementation uses `tracing` crate for logging. The `tracing_utils` crate contains macros for assertion/unwrapping + logging functionalities, and developers must only use `tracing` indirectly through this crate.
+## Layers
 
-Panics are all logged with ERROR log level.
+### Core protocol crates
 
-## Protocol Structures
+The crates `peer`, `phone`, `iso`, `niso`, `boomlet`, `wt`, `sar`, and `st` contain the protocol entities. They are responsible for protocol state transitions and message production/consumption.
 
-Boomerang uses several structs that are accessed by more than one entity: Structs that are shared between entities and do not belong to a single one. The `protocol` crate accommodates these structures. These structures are divided into two categories:
+Shared protocol types live in:
 
-### Messages
+- `protocol`
+  - Message types and shared constructs such as identifiers and parcels.
+- `cryptography`
+  - Shared cryptographic primitives and helpers.
 
-These are protocol-level messages that are passed between entities (each must be produced by one and consumed by the other). Messages only implement minimal logic related to their creation and an `into_parts()` method that consumes the caller and returns its disintegrated fields in a tuple. `into_parts()` is used by the consumer of the message to take ownership of its content. Messages must implement `Message` trait. Empty messages have an exemption from `new_without_default` clippy rule, because default does not make sense for a message struct and no other non-empty message implements it.
+These crates are transport-agnostic. They do not know whether the orchestration is step-by-step or networked.
 
-### Constructs
+### `poc_steps`
 
-Certain structs are used in multiple places (e.g. `PeerId`). These are placed under constructs section of `protocol` crate. They are only allowed to have a minimal self-contained logic implemented in them.
+`poc_steps` is the linear, explicit runner. It executes setup and withdrawal by calling `produce_*` and `consume_*` methods directly in the same order as the design diagrams.
 
-## Cryptography
+Key files:
 
-The `cryptography` crate standardizes the cryptographic primitives used through the protocol. This includes hashing, signatures, symmetric encryption/decryption, and more. Other crates must perform cryptographic operations only through the `cryptography` crate.
+- `poc_steps/src/config.rs`
+  - Static configuration for the runner.
+- `poc_steps/src/setup.rs`
+  - Explicit setup sequence.
+- `poc_steps/src/withdrawal.rs`
+  - Explicit withdrawal sequence.
 
-## Message Passing
+Use `poc_steps` when the goal is to inspect the exact protocol sequence in a human-readable order.
 
-Boomerang protocol works with a message-in-message-out rule: Each entity that receives message(s), produces message(s) to other entities, and only engages in message production if it receives the message(s) it expects. In code, entities have `produce_*` and `consume_*` methods that produce and consume protocol-level messages. `consume_*` methods change the inner state of entities, therefore all of them borrow the entity mutably, while `produce_*` methods only produce messages for other entities and do not mutate the state of entities, therefore they borrow entities immutably. The decision to differentiate between consume and produce methods as opposed to having a single consume+produce method was made to make the future implementations of retrying and failure recovery easier.
+### `poc_networked`
 
-`consume_*` and `produce_*` methods create `tracing` spans using `instrument` macro. These methods emit log events in following scenarios:
+`poc_networked` is the automated runner. It wraps the same core entities in an independent orchestration layer built on Tokio channels and actors.
 
-- Start of the method (TRACE log level)
-- Finish of the method along with its result (TRACE log level)
-- An error happening (WARN log level)
+Key files:
 
-The flow of a `consume_*` method is as follows (sections are clearly delineated by comments in code):
+- `poc_networked/src/config.rs`
+  - Static network and withdrawal configuration.
+- `poc_networked/src/actors/peer_actor.rs`
+  - Drives one peer and its local entities.
+- `poc_networked/src/actors/wt_actor.rs`
+  - Drives the watchtower.
+- `poc_networked/src/actors/sar_actor.rs`
+  - Drives each SAR.
+- `poc_networked/src/transport.rs`
+  - Inter-actor mailbox primitives and peer directory.
+- `poc_networked/src/local_actor.rs`
+  - Channel-backed worker handles for peer-local entities.
+- `poc_networked/src/envelopes.rs`
+  - Transport envelopes used between orchestration actors.
 
-- Log start
-- Check state
-- Unpack message data
-- Unpack state data
-- Do computation
-- Change state
-- Log finish
+Use `poc_networked` when the goal is to exercise the protocol as a concurrent, automatically progressing system.
 
-Even if a section of this is not applicable to a certain `consume_*` method, it still must be present and have a `{}` code in its place. `produce_*` methods follow a mostly similar flow of execution:
+## Configuration
 
-- Log start
-- Check state
-- Unpack state data
-- Do computation
-- Log finish
+Both runnable PoCs now use dedicated config modules:
+
+- `poc_steps/src/config.rs`
+- `poc_networked/src/config.rs`
+
+This keeps runtime parameters, milestone blocks, withdrawal constants, and `bitcoind` path resolution out of the runner entrypoint logic.
+
+The config layer is intentionally separate from the protocol entities. Changing environment defaults or orchestration parameters should not require modifying the core protocol crates.
+
+## Message Model
+
+The protocol follows a message-in / message-out model:
+
+- `consume_*` methods apply incoming protocol messages to entity state.
+- `produce_*` methods create outgoing protocol messages from current entity state.
+
+This separation is deliberate. It keeps state transitions explicit and makes orchestration, retries, and alternative transport layers easier to build around the same entities.
+
+Shared messages and message collections are represented in `protocol`, including parcelized multi-recipient exchanges.
+
+## Transport and Isolation
+
+### In `poc_steps`
+
+There is no independent transport layer. The runner directly invokes entity methods in the required order. This keeps the protocol steps visible and easy to trace back to the design diagrams.
+
+### In `poc_networked`
+
+There are two transport boundaries:
+
+- Inter-actor transport
+  - Peer <-> WT, Peer <-> SAR, WT <-> SAR, and peer out-of-band communication all use Tokio `mpsc` channels.
+- Peer-local transport
+  - Each peer-local entity (`Peer`, `Iso`, `Niso`, `Boomlet`, `Boomletwo`, `Phone`, `St`) runs behind a channel-backed worker in `local_actor.rs`.
+
+This means the networked runner's orchestration is independent from the protocol logic. The runner sends typed envelopes and local worker requests; the entity crates still only know about protocol messages and state transitions.
+
+## Logging and Tracing
+
+The repository uses `tracing` for runtime visibility.
+
+- Core protocol methods emit spans and events around protocol state transitions.
+- Runner crates use higher-level orchestration logs to narrate setup, withdrawal, actor roles, and major milestones.
+
+In practice:
+
+- `poc_steps` is best for step-by-step protocol inspection.
+- `poc_networked` is best for actor-level and transport-level tracing of an automated run.
+
+## Why Two PoCs Exist
+
+The two runners solve different problems:
+
+- `poc_steps`
+  - Optimizes for protocol readability and direct correspondence with the message diagrams.
+- `poc_networked`
+  - Optimizes for concurrency, automatic execution, and separation between orchestration and core protocol logic.
+
+Keeping both is intentional. The step runner is the clearest reference implementation of the flow, while the networked runner is the clearest reference implementation of a channel-based orchestration layer around the same protocol.

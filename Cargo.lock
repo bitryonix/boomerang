@@ -707,7 +707,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 
 [[package]]
-name = "poc"
+name = "poc-networked"
+version = "0.1.0"
+dependencies = [
+ "bitcoin",
+ "bitcoincore-rpc",
+ "boomlet",
+ "corepc-node",
+ "cryptography",
+ "iso",
+ "miniscript",
+ "musig2",
+ "niso",
+ "peer",
+ "phone",
+ "protocol",
+ "rand 0.9.2",
+ "sar",
+ "st",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tracing_utils",
+ "wt",
+]
+
+[[package]]
+name = "poc-steps"
 version = "0.1.0"
 dependencies = [
  "bip39",

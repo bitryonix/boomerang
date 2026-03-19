@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use bitcoin::Network;
 use boomlet::Boomlet;
 use corepc_node::{Conf, P2P};
 use iso::Iso;
@@ -13,13 +12,14 @@ use protocol::{
 };
 use sar::Sar;
 use st::St;
-use tracing::{debug, level_filters::LevelFilter};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing::debug;
 use wt::Wt;
+
+use crate::config::BoomerangNetworkConfig;
 
 pub struct BoomerangEntities {
     pub bitcoin_node: corepc_node::Node,
-    pub network: Network,
+    pub network: bitcoin::Network,
     pub peer_1: Peer,
     pub peer_2: Peer,
     pub peer_3: Peer,
@@ -68,47 +68,58 @@ pub struct BoomerangEntities {
     pub active_wt: Wt,
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run(
-    network: Network,
-    bitcoind_executable_path: &str,
-    milestone_block_0: u32,
-    milestone_block_1: u32,
-    milestone_block_2: u32,
-    milestone_block_3: u32,
-    milestone_block_4: u32,
-    milestone_block_5: u32,
-    duress_check_interval_in_blocks: u32,
-    min_tries_for_digging_game_in_blocks: u32,
-    max_tries_for_digging_game_in_blocks: u32,
-    tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt: u32,
-    tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers: u32,
-    tolerance_in_blocks_from_tx_approval_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_approval_by_wt: u32,
-    tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers: u32,
-    tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_receiving_all_non_initiator_tx_approvals_by_initiator_peer: u32,
-    required_minimum_distance_in_blocks_between_initiator_peer_tx_approval_and_receiving_all_non_initiator_tx_approvals_by_initiator_peer: u32,
-    tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_sar_response_by_wt: u32,
-    tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_initiator_peer_tx_commitment_by_non_initiator_peers: u32,
-    tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers: u32,
-    tolerance_in_blocks_from_creating_ping_to_receiving_all_pings_by_wt_and_having_sar_response_back_to_wt: u32,
-    tolerance_in_blocks_from_creating_pong_by_wt_to_reviewing_the_pong_in_peers_boomlet: u32,
-    tolerance_in_blocks_from_creating_ping_by_other_peers_to_reviewing_the_ping_in_peer_boomlet: u32,
-    jump_in_blocks_if_last_seen_block_lags_behind_niso_event_block_height_in_boomlet: u32,
-    tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer: u32,
-    tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers: u32,
-    tolerance_in_blocks_from_tx_commitment_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_commitment_by_wt_having_sar_response_back_to_wt: u32,
-    wt_sleeping_time_to_check_for_new_block_in_milliseconds: u32,
-    required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers: u32,
-    required_minimum_distance_in_blocks_between_ping_and_pong: u32,
+    config: &BoomerangNetworkConfig,
 ) -> Result<BoomerangEntities, Box<dyn std::error::Error>> {
-    // Setting up tracing.
-    let filter = EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into());
-
-    let subscriber = FmtSubscriber::builder()
-        .with_env_filter(filter)
-        .pretty()
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    let network = config.network;
+    let bitcoind_executable_path = config.bitcoind_executable_path.as_str();
+    let milestone_block_0 = config.milestone_block_0;
+    let milestone_block_1 = config.milestone_block_1;
+    let milestone_block_2 = config.milestone_block_2;
+    let milestone_block_3 = config.milestone_block_3;
+    let milestone_block_4 = config.milestone_block_4;
+    let milestone_block_5 = config.milestone_block_5;
+    let duress_check_interval_in_blocks = config.duress_check_interval_in_blocks;
+    let min_tries_for_digging_game_in_blocks = config.min_tries_for_digging_game_in_blocks;
+    let max_tries_for_digging_game_in_blocks = config.max_tries_for_digging_game_in_blocks;
+    let tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt =
+        config.tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_tx_approval_by_wt;
+    let tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers =
+        config.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_wt_tx_approval_by_non_initiator_peers;
+    let tolerance_in_blocks_from_tx_approval_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_approval_by_wt =
+        config.tolerance_in_blocks_from_tx_approval_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_approval_by_wt;
+    let tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers =
+        config.tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers;
+    let tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_receiving_all_non_initiator_tx_approvals_by_initiator_peer =
+        config.tolerance_in_blocks_from_tx_approval_by_initiator_peer_to_receiving_all_non_initiator_tx_approvals_by_initiator_peer;
+    let required_minimum_distance_in_blocks_between_initiator_peer_tx_approval_and_receiving_all_non_initiator_tx_approvals_by_initiator_peer =
+        config.required_minimum_distance_in_blocks_between_initiator_peer_tx_approval_and_receiving_all_non_initiator_tx_approvals_by_initiator_peer;
+    let tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_sar_response_by_wt =
+        config.tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_sar_response_by_wt;
+    let tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_initiator_peer_tx_commitment_by_non_initiator_peers =
+        config.tolerance_in_blocks_from_tx_commitment_by_initiator_peer_to_receiving_initiator_peer_tx_commitment_by_non_initiator_peers;
+    let tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers =
+        config.tolerance_in_blocks_from_tx_commitment_by_initiator_and_non_initiator_peers_to_receiving_tx_commitment_by_all_peers;
+    let tolerance_in_blocks_from_creating_ping_to_receiving_all_pings_by_wt_and_having_sar_response_back_to_wt =
+        config.tolerance_in_blocks_from_creating_ping_to_receiving_all_pings_by_wt_and_having_sar_response_back_to_wt;
+    let tolerance_in_blocks_from_creating_pong_by_wt_to_reviewing_the_pong_in_peers_boomlet =
+        config.tolerance_in_blocks_from_creating_pong_by_wt_to_reviewing_the_pong_in_peers_boomlet;
+    let tolerance_in_blocks_from_creating_ping_by_other_peers_to_reviewing_the_ping_in_peer_boomlet =
+        config.tolerance_in_blocks_from_creating_ping_by_other_peers_to_reviewing_the_ping_in_peer_boomlet;
+    let jump_in_blocks_if_last_seen_block_lags_behind_niso_event_block_height_in_boomlet =
+        config.jump_in_blocks_if_last_seen_block_lags_behind_niso_event_block_height_in_boomlet;
+    let tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer =
+        config.tolerance_in_blocks_from_tx_approval_by_non_initiator_peers_to_receiving_non_initiator_tx_approval_by_initiator_peer;
+    let tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers =
+        config.tolerance_in_blocks_from_tx_approval_by_wt_to_receiving_non_initiator_tx_approval_by_other_non_initiator_peers;
+    let tolerance_in_blocks_from_tx_commitment_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_commitment_by_wt_having_sar_response_back_to_wt =
+        config.tolerance_in_blocks_from_tx_commitment_by_non_initiator_peer_to_receiving_non_initiator_peers_tx_commitment_by_wt_having_sar_response_back_to_wt;
+    let wt_sleeping_time_to_check_for_new_block_in_milliseconds =
+        config.wt_sleeping_time_to_check_for_new_block_in_milliseconds;
+    let required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers =
+        config.required_minimum_distance_in_blocks_between_peer_tx_commitment_and_receiving_all_tx_commitment_by_peers;
+    let required_minimum_distance_in_blocks_between_ping_and_pong =
+        config.required_minimum_distance_in_blocks_between_ping_and_pong;
 
     // Setting up bitcoind.
     let mut corepc_node_conf = Conf::default();
