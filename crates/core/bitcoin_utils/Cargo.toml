@@ -1,0 +1,21 @@
+[package]
+name = "bitcoin_utils"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Bitcoin transaction utilities shared by Boomerang domain crates."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+bitcoin = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+miniscript = { workspace = true, features = ["compiler", "serde"] }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

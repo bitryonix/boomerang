@@ -1,0 +1,68 @@
+# poc-runtime
+
+`poc-runtime` is the supported operator-facing crate for the local Boomerang proof-of-concept
+flow.
+
+## What It Does
+
+`poc-runtime` owns the full supported local workflow:
+
+- validate the default PoC configuration
+- start a local Bitcoin Core fixture
+- start WT and SAR first
+- wait for WT/SAR `identity-public.toml`
+- build the final deterministic 41-process manifest
+- launch the remaining 35 `boomerang-node` children
+- supervise the whole cluster until completion or failure
+
+## Runtime Model
+
+Each managed `boomerang-node` child now hosts an async runtime internally:
+
+- Tokio owns sockets, timers, and transport supervision
+- the protocol workflow still runs synchronously inside one blocking driver task
+
+That gives the PoC real async transport and supervision behavior without rewriting the core
+protocol crates as async code.
+
+## Terminal Narrative
+
+The default terminal output is intentionally curated.
+
+`poc-runtime` tails each child `progress.log` and promotes important milestones into a readable
+narrative, including:
+
+- identity staging
+- setup progress
+- digging-game checkpoints
+- withdrawal completion
+- concise failure summaries with exact `node.log` and `progress.log` paths
+
+Raw child stdout/stderr still stays in each process `node.log`.
+
+## Common Commands
+
+```bash
+cargo run -p poc-runtime
+cargo run -p poc-runtime --example local_poc_manifest
+```
+
+## State Root Behavior
+
+The default artifact base is the visible repository-root
+[`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md) directory.
+
+By default, `poc-runtime` treats `--state-root` as a base directory and creates one fresh
+child run directory under it. That child run directory is kept after the run finishes.
+
+Keep one exact run directory on disk:
+
+```bash
+cargo run -p poc-runtime -- --state-root /path/to/run --persist-state-root
+```
+
+Reuse an existing persistent run directory intentionally:
+
+```bash
+cargo run -p poc-runtime -- --state-root /path/to/old-run --persist-state-root --reuse-state-root
+```

@@ -1,0 +1,21 @@
+[package]
+name = "phone"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Phone-side doxing and SAR payment state machine for the Boomerang protocol."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bitcoin = { workspace = true }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+secrecy = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

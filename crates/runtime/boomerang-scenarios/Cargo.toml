@@ -1,0 +1,19 @@
+[package]
+name = "boomerang-scenarios"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Deterministic topology and scenario builders for Boomerang development clusters."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+boomerang-config = { workspace = true }
+boomerang-transport = { workspace = true }
+cryptography = { workspace = true }
+protocol = { workspace = true }
+protocol-wire = { workspace = true }
+
+[lints]
+workspace = true

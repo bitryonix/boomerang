@@ -1,0 +1,39 @@
+[package]
+name = "poc-networked"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Legacy channel-based concurrent Boomerang proof-of-concept runner."
+readme = "README.md"
+repository.workspace = true
+
+[[bin]]
+name = "poc-networked"
+path = "src/main.rs"
+
+[dependencies]
+tracing_utils = { workspace = true }
+boomlet = { workspace = true }
+iso = { workspace = true }
+niso = { workspace = true }
+wt = { workspace = true }
+sar = { workspace = true }
+st = { workspace = true }
+peer = { workspace = true }
+phone = { workspace = true }
+protocol = { workspace = true }
+cryptography = { workspace = true }
+boomerang-config = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+corepc-node = { workspace = true }
+bitcoin = { workspace = true }
+musig2 = { workspace = true }
+miniscript = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time", "sync", "tracing"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+rand = { workspace = true }
+
+[lints]
+workspace = true

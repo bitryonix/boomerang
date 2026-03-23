@@ -1,76 +1,183 @@
-# Boomerang Proof of Concept
+# Boomerang Rust Workspace
 
-Boomerang is a Bitcoin cold-storage protocol with built-in coercion resistance. This repository is the Rust proof-of-concept implementation of the protocol and its execution environments.
+This repository contains the Rust proof-of-concept implementation of the Boomerang cold-storage
+protocol together with the transport, runtime, configuration, and supervisor layers needed to run
+the protocol as independent processes.
 
 For the protocol design itself, see the [boomerang design repository](https://github.com/bitryonix/boomerang_design).
 
-## Workspace Overview
+- [Boomerang Rust Workspace](#boomerang-rust-workspace)
+  - [What This Workspace Contains](#what-this-workspace-contains)
+  - [Supported Runtime Path](#supported-runtime-path)
+  - [Current Execution Model](#current-execution-model)
+  - [Workspace Layout](#workspace-layout)
+  - [Run Artifacts](#run-artifacts)
+  - [Common Commands](#common-commands)
+  - [WT/SAR Identity Contract](#wtsar-identity-contract)
+  - [Logging And Operator Experience](#logging-and-operator-experience)
+  - [Quality Gates](#quality-gates)
+  - [Documentation Map](#documentation-map)
+  - [Roadmap](#roadmap)
 
-This workspace contains two runnable proof-of-concept binaries grouped under `poc/` and a set of core protocol crates:
+## What This Workspace Contains
 
-- `poc/steps`
-  - A deterministic, step-by-step runner that follows the setup and withdrawal message diagrams directly.
-  - Useful when you want to inspect the protocol flow in a linear, explicit way.
-- `poc/networked`
-  - A networked runner that executes the protocol automatically across one WT, five SARs, and five peers.
-  - Uses an independent Tokio-channel transport/orchestration layer around the core protocol entities.
-- Core crates
-  - `peer`, `phone`, `iso`, `niso`, `boomlet`, `wt`, `sar`, `st`, `protocol`, `cryptography`, and supporting utilities.
+The workspace is split into four top-level concerns:
 
-## Runners
+- `crates/core`
+  - Protocol entities and domain support crates.
+  - This is where the protocol state machines live.
+- `crates/network`
+  - The wire contract and the transport implementation.
+  - Today that means `protocol-wire` plus the Tokio/TCP-backed `boomerang-transport`.
+- `crates/runtime`
+  - Configuration, manifest loading, runtime orchestration, the standalone node host, and
+    deterministic scenario builders.
+- `poc`
+  - Human-facing proof-of-concept runners.
+  - `poc-runtime` is the supported operator path.
+  - `poc-networked` and `poc-steps` remain available as legacy/reference runners.
 
-### `poc-steps`
+The repository also vendors a local Bitcoin Core fixture under `bitcoin-29.0/` for PoC-oriented
+development flows.
 
-`poc-steps` executes the protocol in the same order as the design diagrams, with the orchestration written out explicitly.
+## Supported Runtime Path
 
-- Entry point: `poc/steps/src/main.rs`
-- Config: `poc/steps/src/config.rs`
-- Detailed docs: [poc/steps/README.md](poc/steps/README.md)
+The supported runtime stack is:
 
-Run it with:
+- `boomerang-node`
+  - Runs one configured role process from a TOML manifest.
+- `poc-runtime`
+  - Launches the full 41-process local topology, stages WT/SAR identity publication, writes the
+    generated cluster manifest, supervises child processes, and prints a curated terminal narrative.
 
-```bash
-cargo run -p poc-steps
+`poc-networked` and `poc-steps` are still runnable, but they are reference surfaces rather than the
+preferred path for new work.
+
+## Current Execution Model
+
+- The system still runs as 41 independent OS processes in the main PoC flow.
+- Each `boomerang-node` process now hosts an async Tokio runtime for sockets, timers, and
+  supervision work.
+- The core protocol workflow itself remains synchronous and runs inside one dedicated blocking
+  driver task per process.
+- WT and SAR create their private identity material internally inside the core entities.
+- Nothing outside core is allowed to put WT/SAR private identity material into manifests.
+- The only WT/SAR identity artifact that leaves the process boundary is `identity-public.toml`.
+
+## Workspace Layout
+
+```text
+crates/
+  core/
+  network/
+  runtime/
+poc/
+  poc-runtime/
+  poc-networked/
+  poc-steps/
+poc-runs/
+docs/
+bitcoin-29.0/
 ```
 
-### `poc-networked`
+## Run Artifacts
 
-`poc-networked` runs the same protocol automatically through an independent actor/transport layer. Cross-entity communication uses Tokio channels, and peer-local entities are also isolated behind channel-backed workers.
+The default PoC run-artifact base is now [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+in the workspace root so operators can find generated manifests, per-process state directories, and
+logs without digging through the system temp directory.
 
-- Entry point: `poc/networked/src/main.rs`
-- Config: `poc/networked/src/config.rs`
-- Detailed docs: [poc/networked/README.md](poc/networked/README.md)
+By default, `poc-runtime` creates one fresh `run-*` child directory under that base and keeps it
+after the run completes. Exact-directory persistence and reuse are still explicit:
 
-Run it with:
+- default
+  - `cargo run -p poc-runtime`
+  - creates `poc-runs/run-...`
+  - keeps that run directory afterward
+- keep a specific run directory
+  - `cargo run -p poc-runtime -- --state-root /path/to/run --persist-state-root`
+- reuse an existing persistent run directory
+  - `cargo run -p poc-runtime -- --state-root /path/to/run --persist-state-root --reuse-state-root`
+
+## Common Commands
+
+Run one standalone role:
+
+```bash
+cargo run -p boomerang-node -- wt run --config /path/to/wt.toml
+```
+
+Run the supported 41-process PoC supervisor:
+
+```bash
+cargo run -p poc-runtime
+```
+
+Generate the deterministic 41-process manifest example:
+
+```bash
+cargo run -p poc-runtime --example local_poc_manifest
+```
+
+Run the legacy reference runners:
 
 ```bash
 cargo run -p poc-networked
+cargo run -p poc-steps
 ```
 
-## Repository Layout
+## WT/SAR Identity Contract
 
-- `poc/`
-  - All runnable PoC environments.
-- `poc/steps/`
-  - Step-by-step PoC runner.
-- `poc/networked/`
-  - Networked PoC runner.
-- `protocol/`
-  - Shared protocol messages and constructs.
-- `peer/`, `phone/`, `iso/`, `niso/`, `boomlet/`, `wt/`, `sar/`, `st/`
-  - Core protocol entities.
-- `cryptography/`
-  - Shared cryptographic primitives and helpers.
-- `bitcoin-29.0/`
-  - Bundled `bitcoind` binaries used by the PoC runners on supported platforms.
+The workspace now enforces one clear rule:
 
-## Platform Support
+- WT/SAR manifests never contain WT/SAR private keys or Tor secret keys.
+- WT/SAR manifests also no longer contain `wt_id` or `sar_id` in their own bootstrap payloads.
+- WT/SAR `run` creates identity internally.
+- Supervisors and peers consume only `identity-public.toml`.
 
-The PoC runners currently support Linux and macOS through the bundled `bitcoind` binaries in `bitcoin-29.0/`.
+That rule applies to the supported path and to custom WT/SAR manifests loaded through
+`boomerang-config`.
 
-## Architecture
+## Logging And Operator Experience
 
-Architectural decisions are documented in [Architecture.md](Architecture.md).
+`poc-runtime` intentionally separates high-signal terminal output from low-level log artifacts:
+
+- terminal output
+  - curated supervisor narrative
+  - identity staging
+  - setup milestones
+  - digging-game checkpoints
+  - withdrawal completion
+  - child-failure summaries
+- on-disk artifacts
+  - `node.log`
+  - `progress.log`
+  - generated manifest files
+  - WT/SAR `identity-public.toml`
+
+The terminal output is meant to show the protocol dynamic at a glance. The per-process files are
+the place to go for deep debugging.
+
+## Quality Gates
+
+The strongest repository-level checks currently used for this workspace are:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo doc --workspace --no-deps
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
+```
+
+## Documentation Map
+
+- Workspace architecture: [Architecture.md](/Users/bedlam/Desktop/getting_rusty/boomerang/Architecture.md)
+- Workspace design decisions: [DesignDecisions.md](/Users/bedlam/Desktop/getting_rusty/boomerang/DesignDecisions.md)
+- Workspace limitations: [Limitations.md](/Users/bedlam/Desktop/getting_rusty/boomerang/Limitations.md)
+- Operational notes: [docs/operations.md](/Users/bedlam/Desktop/getting_rusty/boomerang/docs/operations.md)
+- Repository ADR baseline: [docs/adr/0001-repository-compliance-baseline.md](/Users/bedlam/Desktop/getting_rusty/boomerang/docs/adr/0001-repository-compliance-baseline.md)
+- PoC area overview: [poc/README.md](/Users/bedlam/Desktop/getting_rusty/boomerang/poc/README.md)
+- Supported PoC runner: [poc/poc-runtime/README.md](/Users/bedlam/Desktop/getting_rusty/boomerang/poc/poc-runtime/README.md)
 
 ## Roadmap
 

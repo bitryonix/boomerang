@@ -1,0 +1,25 @@
+[package]
+name = "boomerang-node"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "CLI host that runs a single Boomerang role process or launches a cluster."
+readme = "README.md"
+repository.workspace = true
+
+[[bin]]
+name = "boomerang-node"
+path = "src/main.rs"
+
+[dependencies]
+boomerang-config = { workspace = true }
+boomerang-runtime = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+protocol-wire = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

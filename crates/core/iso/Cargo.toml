@@ -1,0 +1,28 @@
+[package]
+name = "iso"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Initiator signer role for Boomerang setup and withdrawal flows."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+bitcoin_utils = { workspace = true }
+cryptography = { workspace = true }
+descriptor = { workspace = true }
+bip39 = { workspace = true }
+bitcoin = { workspace = true }
+miniscript = { workspace = true, features = ["compiler", "serde"] }
+musig2 = { workspace = true, features = ["serde", "secp256k1"] }
+rand = { workspace = true }
+secrecy = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

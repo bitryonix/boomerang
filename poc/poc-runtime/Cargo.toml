@@ -1,0 +1,28 @@
+[package]
+name = "poc-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Preferred Boomerang POC launcher and examples for the full local 41-process cluster."
+readme = "README.md"
+repository.workspace = true
+
+[[bin]]
+name = "poc-runtime"
+path = "src/main.rs"
+
+[dependencies]
+boomerang-config = { workspace = true }
+boomerang-runtime = { workspace = true }
+boomerang-scenarios = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+corepc-node = { workspace = true }
+protocol = { workspace = true }
+protocol-wire = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "process", "rt-multi-thread", "time"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "st"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Safety token role for duress signaling and checkpoint output in Boomerang."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bitcoin = { workspace = true }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

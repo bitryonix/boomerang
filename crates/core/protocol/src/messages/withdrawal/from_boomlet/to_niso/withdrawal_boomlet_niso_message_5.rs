@@ -1,0 +1,24 @@
+use cryptography::SymmetricCiphertext;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WithdrawalBoomletNisoMessage5 {
+    boomlet_ping_signed_by_boomlet_padded_signed_by_boomlet_encrypted_by_boomlet_for_wt:
+        SymmetricCiphertext,
+}
+
+impl WithdrawalBoomletNisoMessage5 {
+    pub fn new(
+        boomlet_ping_signed_by_boomlet_padded_signed_by_boomlet_encrypted_by_boomlet_for_wt: SymmetricCiphertext,
+    ) -> Self {
+        WithdrawalBoomletNisoMessage5 {
+            boomlet_ping_signed_by_boomlet_padded_signed_by_boomlet_encrypted_by_boomlet_for_wt,
+        }
+    }
+
+    pub fn into_parts(self) -> (SymmetricCiphertext,) {
+        (
+            self.boomlet_ping_signed_by_boomlet_padded_signed_by_boomlet_encrypted_by_boomlet_for_wt,
+        )
+    }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "descriptor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Boomerang descriptor builder and parsing helpers for Taproot policy construction."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bitcoin = { workspace = true }
+miniscript = { workspace = true, features = ["compiler", "serde"] }
+getset = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

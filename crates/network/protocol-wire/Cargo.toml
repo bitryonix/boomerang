@@ -1,0 +1,22 @@
+[package]
+name = "protocol-wire"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Stable framed wire contract and transport control payloads for Boomerang."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+protocol = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+bincode = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+bitcoin = { workspace = true }
+cryptography = { workspace = true }
+
+[lints]
+workspace = true

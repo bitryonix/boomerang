@@ -1,0 +1,21 @@
+[package]
+name = "sar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Search-and-rescue actor role for Boomerang recovery and duress checks."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bitcoin = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+[lints.clippy]
+eq_op = "allow"

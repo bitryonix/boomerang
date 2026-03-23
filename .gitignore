@@ -13,3 +13,7 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 .DS_Store
+
+# PoC runtime artifacts stay visible under the workspace root, but only the directory README is kept.
+poc-runs/*
+!poc-runs/README.md

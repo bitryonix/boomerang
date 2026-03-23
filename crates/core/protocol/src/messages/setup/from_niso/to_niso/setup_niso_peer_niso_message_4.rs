@@ -1,0 +1,19 @@
+use cryptography::SignedData;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetupNisoPeerNisoMessage4 {
+    shared_state_fingerprint_signed_by_boomlet: SignedData<[u8; 32]>,
+}
+
+impl SetupNisoPeerNisoMessage4 {
+    pub fn new(shared_state_fingerprint_signed_by_boomlet: SignedData<[u8; 32]>) -> Self {
+        SetupNisoPeerNisoMessage4 {
+            shared_state_fingerprint_signed_by_boomlet,
+        }
+    }
+
+    pub fn into_parts(self) -> (SignedData<[u8; 32]>,) {
+        (self.shared_state_fingerprint_signed_by_boomlet,)
+    }
+}

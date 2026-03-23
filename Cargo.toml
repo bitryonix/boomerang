@@ -1,20 +1,87 @@
 [workspace]
 
 members = [
-    "iso",
-    "niso",
-    "boomlet",
-    "descriptor",
-    "protocol",
-    "wt",
-    "sar",
-    "st",
-    "peer",
-    "phone",
-    "poc/steps",
-    "poc/networked",
-    "tracing_utils",
-    "bitcoin_utils",
-    "cryptography"
+    "crates/runtime/boomerang-config",
+    "crates/core/iso",
+    "crates/core/niso",
+    "crates/core/boomlet",
+    "crates/core/descriptor",
+    "crates/network/boomerang-transport",
+    "crates/runtime/boomerang-runtime",
+    "crates/runtime/boomerang-node",
+    "crates/runtime/boomerang-scenarios",
+    "poc/poc-runtime",
+    "crates/network/protocol-wire",
+    "crates/core/protocol",
+    "crates/core/wt",
+    "crates/core/sar",
+    "crates/core/st",
+    "crates/core/peer",
+    "crates/core/phone",
+    "poc/poc-networked",
+    "poc/poc-steps",
+    "crates/core/tracing_utils",
+    "crates/core/bitcoin_utils",
+    "crates/core/cryptography"
 ]
-resolver = "2"
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.87"
+repository = "https://git.2099999997690000.com/ntl/boomerang.git"
+
+[workspace.dependencies]
+boomerang-config = { path = "crates/runtime/boomerang-config" }
+boomerang-runtime = { path = "crates/runtime/boomerang-runtime" }
+boomerang-transport = { path = "crates/network/boomerang-transport" }
+boomerang-scenarios = { path = "crates/runtime/boomerang-scenarios" }
+bitcoin_utils = { path = "crates/core/bitcoin_utils" }
+boomlet = { path = "crates/core/boomlet" }
+cryptography = { path = "crates/core/cryptography" }
+descriptor = { path = "crates/core/descriptor" }
+iso = { path = "crates/core/iso" }
+niso = { path = "crates/core/niso" }
+peer = { path = "crates/core/peer" }
+phone = { path = "crates/core/phone" }
+protocol = { path = "crates/core/protocol" }
+protocol-wire = { path = "crates/network/protocol-wire" }
+sar = { path = "crates/core/sar" }
+st = { path = "crates/core/st" }
+tracing_utils = { path = "crates/core/tracing_utils" }
+wt = { path = "crates/core/wt" }
+
+aes = "0.8.4"
+bincode = { version = "2.0.1", features = ["serde"] }
+bip39 = "2.1.0"
+bitcoin = { version = "0.32.5", features = ["serde"] }
+bitcoincore-rpc = "0.19.0"
+cbc = { version = "0.1.2", features = ["alloc"] }
+clap = { version = "4.5.38", features = ["derive"] }
+corepc-node = { version = "0.8.0", features = ["29_0"] }
+data-encoding = "2.8.0"
+derive_more = { version = "2.0.1", features = ["debug", "display", "error"] }
+ed25519-dalek = "2.1.1"
+getset = "0.1.5"
+hex = "0.4"
+miniscript = { version = "12.3.2", features = ["compiler", "serde"] }
+musig2 = { version = "0.3.1", features = ["serde", "secp256k1"] }
+rand = "0.9.2"
+secrecy = { version = "0.10.3", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive", "serde_derive"] }
+sha2 = "0.10.9"
+sha3 = "0.10.8"
+strum = { version = "0.27.2", features = ["derive"] }
+tokio = "1.48.0"
+toml = "0.8.23"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+bare_urls = "deny"

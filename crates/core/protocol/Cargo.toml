@@ -1,0 +1,31 @@
+[package]
+name = "protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Core Boomerang protocol message, construct, and identifier model."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bip39 = { workspace = true }
+bitcoin = { workspace = true }
+miniscript = { workspace = true, features = ["compiler", "serde"] }
+musig2 = { workspace = true, features = ["serde", "secp256k1"] }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+getset = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+secrecy = { workspace = true, features = ["serde"] }
+bincode = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+rand = { workspace = true }
+ed25519-dalek = { workspace = true }
+sha3 = { workspace = true }
+data-encoding = { workspace = true }
+
+[lints]
+workspace = true

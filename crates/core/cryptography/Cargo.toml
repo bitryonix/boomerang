@@ -1,0 +1,29 @@
+[package]
+name = "cryptography"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Cryptographic primitives and typed wrappers used by the Boomerang protocol."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+tracing_utils = { workspace = true }
+bitcoin = { workspace = true }
+musig2 = { workspace = true, features = ["serde", "secp256k1"] }
+sha2 = { workspace = true }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+getset = { workspace = true }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+bincode = { workspace = true, features = ["serde"] }
+aes = { workspace = true }
+cbc = { workspace = true, features = ["alloc"] }
+rand = { workspace = true }
+
+[dev-dependencies]
+hex = { workspace = true }
+
+[lints]
+workspace = true

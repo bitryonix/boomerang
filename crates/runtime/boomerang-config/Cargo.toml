@@ -1,0 +1,22 @@
+[package]
+name = "boomerang-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Typed process and cluster manifest models for Boomerang runtimes."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+bitcoin = { workspace = true }
+boomerang-transport = { workspace = true }
+cryptography = { workspace = true }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+protocol = { workspace = true }
+protocol-wire = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
+
+[lints]
+workspace = true

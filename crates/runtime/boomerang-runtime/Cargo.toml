@@ -1,0 +1,34 @@
+[package]
+name = "boomerang-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Application runtime that maps transport frames onto Boomerang role workflows."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+bitcoin = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+boomerang-config = { workspace = true }
+boomerang-transport = { workspace = true }
+boomlet = { workspace = true }
+cryptography = { workspace = true }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+iso = { workspace = true }
+miniscript = { workspace = true, features = ["compiler", "serde"] }
+niso = { workspace = true }
+peer = { workspace = true }
+phone = { workspace = true }
+protocol = { workspace = true }
+protocol-wire = { workspace = true }
+sar = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+st = { workspace = true }
+tokio = { workspace = true, features = ["process", "rt", "rt-multi-thread", "sync", "time"] }
+tracing = { workspace = true }
+wt = { workspace = true }
+
+[lints]
+workspace = true

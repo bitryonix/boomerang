@@ -1,0 +1,22 @@
+[package]
+name = "peer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Peer-facing domain state machine that coordinates local Boomerang entities."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+bitcoin = { workspace = true }
+bip39 = { workspace = true }
+protocol = { workspace = true }
+tracing_utils = { workspace = true }
+cryptography = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+serde = { workspace = true, features = ["derive", "serde_derive"] }
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+tracing = { workspace = true }
+[lints.clippy]
+eq_op = "allow"

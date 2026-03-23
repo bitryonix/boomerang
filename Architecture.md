@@ -1,127 +1,129 @@
-# Architecture
+# Workspace Architecture
 
-This document explains how the repository is organized and how the proof-of-concept runners are layered around the core Boomerang protocol entities. It does not try to restate the protocol design itself.
+## Overview
 
-## Goals
+The workspace is organized so the protocol state machines stay distinct from the wire contract,
+transport implementation, runtime orchestration, and PoC supervisors.
 
-The workspace is organized around a few constraints:
+The current supported path is intentionally layered:
 
-- Keep the core protocol entities independent from any specific transport.
-- Preserve the protocol's message-in / message-out structure.
-- Support both a deterministic step runner and a networked runner without forking core logic.
-- Make orchestration changes happen in PoC crates, not in the core entity crates.
+- core/domain crates own protocol rules and state transitions
+- network crates own framing and transport delivery
+- runtime crates own manifests, process startup, routing, and supervision
+- `poc-runtime` owns the supported local 41-process operator workflow
 
-## Layers
+## Layered Structure
 
-### Core protocol crates
+### `crates/core`
 
-The crates `peer`, `phone`, `iso`, `niso`, `boomlet`, `wt`, `sar`, and `st` contain the protocol entities. They are responsible for protocol state transitions and message production/consumption.
+This layer contains the protocol entities and shared domain support.
 
-Shared protocol types live in:
+- role crates
+  - `wt`
+  - `sar`
+  - `peer`
+  - `niso`
+  - `iso`
+  - `boomlet`
+  - `phone`
+  - `st`
+- shared domain support
+  - `protocol`
+  - `cryptography`
+  - `descriptor`
+  - `bitcoin_utils`
+  - `tracing_utils`
 
-- `protocol`
-  - Message types and shared constructs such as identifiers and parcels.
-- `cryptography`
-  - Shared cryptographic primitives and helpers.
+Core crates remain the policy boundary. Runtime and transport code may drive them, but they should
+not need to know about manifests, Tokio tasks, or PoC supervision.
 
-These crates are transport-agnostic. They do not know whether the orchestration is step-by-step or networked.
+### `crates/network`
 
-### `poc-steps`
+This layer owns inter-process communication.
 
-`poc-steps` lives at `poc/steps/`. It is the linear, explicit runner. It executes setup and withdrawal by calling `produce_*` and `consume_*` methods directly in the same order as the design diagrams.
+- `protocol-wire`
+  - stable wire framing, message tags, control payload wrappers, and typed encode/decode helpers
+- `boomerang-transport`
+  - the transport abstraction
+  - the current Tokio/TCP backend
+  - handshake logic
+  - frame I/O
+  - delay-injection seams for future timing experiments
 
-Key files:
+### `crates/runtime`
 
-- `poc/steps/src/config.rs`
-  - Static configuration for the runner.
-- `poc/steps/src/setup.rs`
-  - Explicit setup sequence.
-- `poc/steps/src/withdrawal.rs`
-  - Explicit withdrawal sequence.
+This layer owns application/runtime behavior.
 
-Use `poc-steps` when the goal is to inspect the exact protocol sequence in a human-readable order.
+- `boomerang-config`
+  - process manifests
+  - cluster manifests
+  - PoC defaults
+  - load/save and validation
+  - published WT/SAR public-identity artifact shape
+- `boomerang-runtime`
+  - per-process runtime bootstrap
+  - role-runtime construction
+  - runtime context and routing
+  - async cluster launcher seams
+- `boomerang-node`
+  - the standalone CLI host for one role process or one manifest-defined cluster
+- `boomerang-scenarios`
+  - deterministic scenario builders used by PoC supervision and tests
 
-### `poc-networked`
+### `poc`
 
-`poc-networked` lives at `poc/networked/`. It is the automated runner. It wraps the same core entities in an independent orchestration layer built on Tokio channels and actors.
+This area contains operator-facing and reference PoC runners.
 
-Key files:
-
-- `poc/networked/src/config.rs`
-  - Static network and withdrawal configuration.
-- `poc/networked/src/actors/peer_actor.rs`
-  - Drives one peer and its local entities.
-- `poc/networked/src/actors/wt_actor.rs`
-  - Drives the watchtower.
-- `poc/networked/src/actors/sar_actor.rs`
-  - Drives each SAR.
-- `poc/networked/src/transport.rs`
-  - Inter-actor mailbox primitives and peer directory.
-- `poc/networked/src/local_actor.rs`
-  - Channel-backed worker handles for peer-local entities.
-- `poc/networked/src/envelopes.rs`
-  - Transport envelopes used between orchestration actors.
-
-Use `poc-networked` when the goal is to exercise the protocol as a concurrent, automatically progressing system.
-
-## Configuration
-
-Both runnable PoCs now use dedicated config modules:
-
-- `poc/steps/src/config.rs`
-- `poc/networked/src/config.rs`
-
-This keeps runtime parameters, milestone blocks, withdrawal constants, and `bitcoind` path resolution out of the runner entrypoint logic.
-
-The config layer is intentionally separate from the protocol entities. Changing environment defaults or orchestration parameters should not require modifying the core protocol crates.
-
-## Message Model
-
-The protocol follows a message-in / message-out model:
-
-- `consume_*` methods apply incoming protocol messages to entity state.
-- `produce_*` methods create outgoing protocol messages from current entity state.
-
-This separation is deliberate. It keeps state transitions explicit and makes orchestration, retries, and alternative transport layers easier to build around the same entities.
-
-Shared messages and message collections are represented in `protocol`, including parcelized multi-recipient exchanges.
-
-## Transport and Isolation
-
-### In `poc-steps`
-
-There is no independent transport layer. The runner directly invokes entity methods in the required order. This keeps the protocol steps visible and easy to trace back to the design diagrams.
-
-### In `poc-networked`
-
-There are two transport boundaries:
-
-- Inter-actor transport
-  - Peer <-> WT, Peer <-> SAR, WT <-> SAR, and peer out-of-band communication all use Tokio `mpsc` channels.
-- Peer-local transport
-  - Each peer-local entity (`Peer`, `Iso`, `Niso`, `Boomlet`, `Boomletwo`, `Phone`, `St`) runs behind a channel-backed worker in `local_actor.rs`.
-
-This means the networked runner's orchestration is independent from the protocol logic. The runner sends typed envelopes and local worker requests; the entity crates still only know about protocol messages and state transitions.
-
-## Logging and Tracing
-
-The repository uses `tracing` for runtime visibility.
-
-- Core protocol methods emit spans and events around protocol state transitions.
-- Runner crates use higher-level orchestration logs to narrate setup, withdrawal, actor roles, and major milestones.
-
-In practice:
-
-- `poc-steps` is best for step-by-step protocol inspection.
-- `poc-networked` is best for actor-level and transport-level tracing of an automated run.
-
-## Why Two PoCs Exist
-
-The two runners solve different problems:
-
-- `poc-steps`
-  - Optimizes for protocol readability and direct correspondence with the message diagrams.
+- `poc-runtime`
+  - the supported local multi-process supervisor
 - `poc-networked`
-  - Optimizes for concurrency, automatic execution, and separation between orchestration and core protocol logic.
+  - legacy concurrent actor/channel runner
+- `poc-steps`
+  - legacy linear walkthrough runner
 
-Keeping both is intentional. The step runner is the clearest reference implementation of the flow, while the networked runner is the clearest reference implementation of a channel-based orchestration layer around the same protocol.
+## Runtime Model
+
+The workspace keeps the 41-process topology. The async refactor changed the inside of each process,
+not the process count.
+
+- one OS process per role instance
+- one Tokio runtime host inside each process
+- one dedicated blocking protocol-driver task per process
+- async sockets, timers, and supervision outside the core state machines
+
+That allows async transport and supervision without forcing the core protocol crates themselves to
+become async.
+
+## WT/SAR Identity Boundary
+
+WT and SAR now own private identity creation internally. Outside core:
+
+- manifests never contain WT/SAR private identity material
+- WT/SAR manifests do not carry `wt_id` or `sar_id`
+- runtime and supervisors consume only `identity-public.toml`
+
+This keeps the non-core layers from becoming secret carriers for WT/SAR key material.
+
+## Run-Artifact Layout
+
+The default PoC run-artifact base is now [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+under the repository root. `poc-runtime` creates one ephemeral child run directory there by
+default, which makes logs and generated manifests easy to find when persistence is explicitly
+enabled while still keeping default runs self-cleaning.
+
+## Dependency Direction
+
+Dependency flow remains intentionally inward:
+
+- support crates -> domain crates
+- network/runtime crates -> domain and protocol contracts
+- PoC runners -> runtime/config/scenario crates
+- outer layers depend on inner policy crates, not the reverse
+
+## Supported And Reference Paths
+
+`boomerang-node` plus `poc-runtime` are the maintained operator path.
+
+`poc-networked` and `poc-steps` remain in the workspace because they still provide reference value,
+regression coverage, and alternate views of the protocol, but they are not the primary path for
+new runtime work.

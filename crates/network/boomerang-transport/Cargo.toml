@@ -1,0 +1,18 @@
+[package]
+name = "boomerang-transport"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "TCP transport and link handshake layer for Boomerang process runtimes."
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
+derive_more = { workspace = true, features = ["debug", "display", "error"] }
+protocol-wire = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["fs", "io-util", "net", "rt", "sync", "time"] }
+
+[lints]
+workspace = true
