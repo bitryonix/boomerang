@@ -17,6 +17,7 @@ mod app;
 mod cli;
 mod identity;
 mod launcher;
+mod managed_node_preflight;
 mod progress_monitor;
 mod tracing_setup;
 

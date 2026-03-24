@@ -337,6 +337,12 @@ impl PeerRuntime {
             self.entity.produce_withdrawal_st_input_2(),
         )?;
         context.send_message(self.st_link.clone(), &st_input)?;
+        record_progress(
+            context,
+            self.role(),
+            &self.instance_id,
+            "peer_withdrawal_initiator_duress_check_complete",
+        )?;
         let msg4 = context.recv_message::<withdrawal::from_st::to_niso::WithdrawalStNisoMessage2>(
             &self.st_link,
         )?;
@@ -392,6 +398,12 @@ impl PeerRuntime {
             self.entity.produce_withdrawal_non_initiator_st_input_2(),
         )?;
         context.send_message(self.st_link.clone(), &st_input)?;
+        record_progress(
+            context,
+            role,
+            &self.instance_id,
+            "peer_withdrawal_non_initiator_duress_check_complete",
+        )?;
         let msg4 = context.recv_message::<withdrawal::from_non_initiator_st::to_non_initiator_niso::WithdrawalNonInitiatorStNonInitiatorNisoMessage2>(&self.st_link)?;
         context.send_message(self.niso_link.clone(), &msg4)?;
         let msg5 = context.recv_message::<withdrawal::from_non_initiator_niso::to_non_initiator_boomlet::WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage5>(&self.niso_link)?;
@@ -505,6 +517,14 @@ impl PeerRuntime {
                                 self.entity.produce_withdrawal_st_input_3(),
                             )?;
                             context.send_message(self.st_link.clone(), &st_input)?;
+                            record_progress(
+                                context,
+                                self.role(),
+                                &self.instance_id,
+                                &format!(
+                                    "peer_ping_pong_round_{ping_pong_round}_duress_check_complete"
+                                ),
+                            )?;
                             let msg4 = context.recv_message::<withdrawal::from_st::to_niso::WithdrawalStNisoMessage3>(&self.st_link)?;
                             context.send_message(self.niso_link.clone(), &msg4)?;
                             let msg5 = context.recv_message::<withdrawal::from_niso::to_boomlet::WithdrawalNisoBoomletMessage7>(&self.niso_link)?;

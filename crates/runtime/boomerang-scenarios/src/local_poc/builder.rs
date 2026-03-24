@@ -430,15 +430,10 @@ pub fn default_node_bin() -> PathBuf {
         return PathBuf::from(path);
     }
 
-    let workspace_target = workspace_root()
+    workspace_root()
         .join("target")
         .join("debug")
-        .join("boomerang-node");
-    if workspace_target.exists() {
-        return workspace_target;
-    }
-
-    PathBuf::from("boomerang-node")
+        .join("boomerang-node")
 }
 
 fn workspace_root() -> PathBuf {

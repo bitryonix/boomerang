@@ -53,6 +53,12 @@ The supported runtime stack is:
 `poc-networked` and `poc-steps` are still runnable, but they are reference surfaces rather than the
 preferred path for new work.
 
+One important operational detail is that `poc-runtime` launches `boomerang-node` as a separate
+child executable by path. Because of that, `cargo run -p poc-runtime` now performs its own
+freshness preflight for the workspace-managed `target/debug/boomerang-node` and automatically runs
+`cargo build -p boomerang-node` when the managed child binary is missing or stale. Explicit
+external `--node-bin` paths remain operator-managed and are never rebuilt automatically.
+
 ## Current Execution Model
 
 - The system still runs as 41 independent OS processes in the main PoC flow.
@@ -143,9 +149,11 @@ That rule applies to the supported path and to custom WT/SAR manifests loaded th
 
 - terminal output
   - curated supervisor narrative
+  - color-coded phase labels and protocol event types in interactive terminals
   - identity staging
   - setup milestones
-  - digging-game checkpoints
+  - full peer duress-check steps
+  - full digging-game ping-pong steps
   - withdrawal completion
   - child-failure summaries
 - on-disk artifacts

@@ -11,3 +11,5 @@
   files, while raw child logs remain on disk for postmortem inspection.
 - The default run-artifact base is the visible repository-root `poc-runs/` directory.
 - Reusing a persistent run directory is explicit opt-in through `--reuse-state-root`.
+- `poc-runtime` auto-refreshes only the workspace-managed `target/debug/boomerang-node` path.
+  Explicit external `--node-bin` paths stay operator-managed and are never rebuilt automatically.

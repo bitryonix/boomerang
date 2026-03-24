@@ -7,6 +7,8 @@ flow.
 
 `poc-runtime` owns the full supported local workflow:
 
+- rebuild the workspace-managed `boomerang-node` automatically when the launcher detects that the
+  managed binary is missing or older than the relevant workspace sources
 - validate the default PoC configuration
 - start a local Bitcoin Core fixture
 - start WT and SAR first
@@ -34,9 +36,15 @@ narrative, including:
 
 - identity staging
 - setup progress
-- digging-game checkpoints
+- full peer duress-check steps
+- full digging-game ping-pong steps
 - withdrawal completion
 - concise failure summaries with exact `node.log` and `progress.log` paths
+
+When the output is attached to a real terminal, `poc-runtime` color-codes both the phase label and
+the protocol event itself so the viewer can distinguish things like approvals, duress checks,
+ping-pongs, commitment-path milestones, signing, completion, failure, and artifact notices more
+easily. Non-interactive output stays plain, and `NO_COLOR` disables the styling explicitly.
 
 Raw child stdout/stderr still stays in each process `node.log`.
 
@@ -46,6 +54,13 @@ Raw child stdout/stderr still stays in each process `node.log`.
 cargo run -p poc-runtime
 cargo run -p poc-runtime --example local_poc_manifest
 ```
+
+When `poc-runtime` is using the workspace-managed `target/debug/boomerang-node`, it now checks
+that executable before launch and runs `cargo build -p boomerang-node` automatically if the child
+binary is missing or stale.
+
+If you pass an explicit external `--node-bin`, `poc-runtime` treats that executable as
+operator-managed and does not rebuild it.
 
 ## State Root Behavior
 

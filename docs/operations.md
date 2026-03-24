@@ -40,6 +40,22 @@ Persistence is explicit:
 - `--persist-state-root --reuse-state-root`
   - intentionally reuse an existing persistent run directory
 
+## Managed `boomerang-node` Refresh
+
+`cargo run -p poc-runtime` now protects the supported path from stale child executables.
+
+When `poc-runtime` is using the workspace-managed `target/debug/boomerang-node`, it compares that
+binary against the relevant workspace source trees and automatically runs `cargo build -p boomerang-node`
+when the child binary is missing or older than those sources.
+
+This check is necessary because Cargo only builds the package you asked it to run and that
+package's dependency graph. `poc-runtime` launches `boomerang-node` later as a separate executable
+by path, so that child binary is not rebuilt automatically unless `poc-runtime` performs this
+preflight itself.
+
+If you pass an explicit external `--node-bin`, `poc-runtime` uses it exactly as given and does not
+attempt to rebuild it.
+
 ## Operational Artifacts
 
 Within one kept run directory, the important files are:
@@ -76,8 +92,10 @@ operator experience is split:
 
 - terminal
   - curated supervisor narrative
+  - color-coded phase labels and protocol event types in interactive terminals
   - setup milestones
-  - digging-game checkpoints
+  - full peer duress-check steps
+  - full digging-game ping-pong steps
   - withdrawal progress
   - concise failure summaries
 - per-process files
@@ -88,6 +106,8 @@ That keeps the main terminal readable while preserving the full low-level trace 
 
 ## Environment Variables
 
+- `NO_COLOR`
+  - disables the color-coded `poc-runtime` terminal narrative explicitly
 - `RUST_LOG`
   - controls tracing verbosity for the supported binaries and the reference runners
 

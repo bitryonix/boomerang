@@ -24,6 +24,7 @@ use crate::{
     Cli,
     identity::prepare_local_poc_identities,
     launcher::{spawn_processes, supervise_children, terminate_children},
+    managed_node_preflight::refresh_workspace_managed_node_if_needed,
     progress_monitor::print_narrative,
 };
 
@@ -54,6 +55,7 @@ pub async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ),
         );
     }
+    refresh_workspace_managed_node_if_needed(&cli.node_bin).await?;
     let result = run_with_state_root(&cli, &state_root_plan.actual_state_root, &config).await;
     report_state_root_after_run(&state_root_plan, result.is_err());
     result
@@ -77,7 +79,7 @@ async fn run_with_state_root(
     let rpc_client_url = bitcoin_node.params.rpc_socket;
     let rpc_client_auth = BitcoinCoreAuth::CookieFile(bitcoin_node.params.cookie_file.clone());
     let prepared_identities = prepare_local_poc_identities(
-        &config,
+        config,
         state_root,
         cli.base_port,
         rpc_client_url,
@@ -94,7 +96,7 @@ async fn run_with_state_root(
     let mut progress_monitor = prepared_identities.progress_monitor;
     let mut children = prepared_identities.children;
     let manifest = match local_poc_cluster_manifest(
-        &config,
+        config,
         &prepared_identities.identities,
         state_root,
         cli.base_port,
@@ -317,6 +319,16 @@ impl fmt::Display for StateRootPreflightError {
 
 impl std::error::Error for StateRootPreflightError {}
 
+/// Filters the final cluster manifest down to the processes that were not already prelaunched.
+fn non_identity_processes(manifest: &ClusterManifest) -> Vec<ProcessConfig> {
+    manifest
+        .processes
+        .iter()
+        .filter(|process| !matches!(process.role, TransportRole::Wt | TransportRole::Sar))
+        .cloned()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -408,14 +420,4 @@ mod tests {
 
         let _ = fs::remove_dir_all(path);
     }
-}
-
-/// Filters the final cluster manifest down to the processes that were not already prelaunched.
-fn non_identity_processes(manifest: &ClusterManifest) -> Vec<ProcessConfig> {
-    manifest
-        .processes
-        .iter()
-        .filter(|process| !matches!(process.role, TransportRole::Wt | TransportRole::Sar))
-        .cloned()
-        .collect()
 }

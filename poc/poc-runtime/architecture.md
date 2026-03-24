@@ -16,6 +16,8 @@ It sits above:
 
 The launcher runs in two phases:
 
+1. check whether the workspace-managed `boomerang-node` child binary is missing or stale and
+   rebuild it automatically when needed
 1. start WT/SAR with real `boomerang-node <role> run --config ...` processes
 2. wait for WT/SAR `identity-public.toml`
 3. build the final 41-process manifest
@@ -26,7 +28,7 @@ The launcher runs in two phases:
 
 The crate intentionally separates:
 
-- high-signal supervisor narrative in the terminal
+- full ping-pong and duress-step supervisor narrative in the terminal
 - low-level raw detail in per-process `node.log` and `progress.log`
 
 The default artifact base is the visible repository-root `poc-runs/` directory, and each default

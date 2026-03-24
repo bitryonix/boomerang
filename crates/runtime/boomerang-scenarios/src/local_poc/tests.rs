@@ -4,6 +4,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     net::{Ipv4Addr, SocketAddrV4},
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -13,7 +14,10 @@ use boomerang_config::{
 };
 
 use super::{
-    builder::{default_state_root, local_poc_cluster_manifest, local_poc_identity_processes},
+    builder::{
+        default_node_bin, default_state_root, local_poc_cluster_manifest,
+        local_poc_identity_processes,
+    },
     identity::LocalPocPublishedIdentities,
     ids::{local_instance_id, peer_instance_id},
 };
@@ -115,6 +119,26 @@ fn test_manifest() -> ClusterManifest {
 #[test]
 fn generated_manifest_contains_all_41_processes() {
     assert_eq!(test_manifest().processes.len(), 41);
+}
+
+#[test]
+fn default_node_bin_points_at_the_workspace_managed_binary() {
+    let node_bin = default_node_bin();
+    if let Some(env_path) = std::env::var_os("CARGO_BIN_EXE_boomerang-node") {
+        assert_eq!(node_bin, PathBuf::from(env_path));
+        return;
+    }
+
+    assert_eq!(
+        node_bin,
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .find(|candidate| candidate.join(".git").exists())
+            .expect("workspace root should be discoverable from the scenarios crate")
+            .join("target")
+            .join("debug")
+            .join("boomerang-node")
+    );
 }
 
 #[test]

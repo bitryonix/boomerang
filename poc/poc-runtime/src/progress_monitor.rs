@@ -2,14 +2,15 @@
 //!
 //! # Why this exists
 //! The raw `progress.log` artifacts are useful for postmortem inspection, but operators watching
-//! the PoC live need a small number of narrative checkpoints that show how the protocol is moving.
+//! the PoC live need a readable narrative that shows how the protocol is moving in real time.
 //!
 //! # Role in the system
 //! [`NarrativeProgressMonitor`] tails the child-process progress logs that `boomerang-runtime`
-//! already writes, deduplicates repetitive events, and emits a higher-signal supervisor view.
+//! already writes, deduplicates repeated events, and emits an operator-facing supervisor view.
 
 use std::{
     collections::BTreeSet,
+    io::{self, IsTerminal},
     path::{Path, PathBuf},
 };
 
@@ -25,21 +26,138 @@ use crate::launcher::RunningChild;
 
 /// Prints one curated narrative line for the operator-facing PoC supervisor.
 pub(crate) fn print_narrative(phase: &str, message: &str) {
-    println!("{phase}: {message}");
+    println!(
+        "{}",
+        format_narrative_line(OutputStream::Stdout, phase, message)
+    );
 }
 
 /// Prints the concise failure summary for one unexpectedly exited child.
 pub(crate) fn print_failure_summary(child: &RunningChild, exit_code: Option<i32>) {
+    let summary = super::launcher::format_failure_summary(
+        child.role,
+        &child.instance_id,
+        exit_code,
+        &child.node_log_path,
+        &child.progress_log_path,
+    );
     eprintln!(
         "{}",
-        super::launcher::format_failure_summary(
-            child.role,
-            &child.instance_id,
-            exit_code,
-            &child.node_log_path,
-            &child.progress_log_path,
-        )
+        format_narrative_line(OutputStream::Stderr, "failure", &summary)
     );
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OutputStream {
+    Stdout,
+    Stderr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ColorMode {
+    Enabled,
+    Disabled,
+}
+
+fn format_narrative_line(stream: OutputStream, phase: &str, message: &str) -> String {
+    format_narrative_line_with_mode(color_mode_for_stream(stream), phase, message)
+}
+
+fn format_narrative_line_with_mode(mode: ColorMode, phase: &str, message: &str) -> String {
+    match mode {
+        ColorMode::Disabled => format!("{phase}: {message}"),
+        ColorMode::Enabled => {
+            let message_style = message_style(phase, message);
+            if message_style.is_empty() {
+                format!("{}{phase}\u{1b}[0m: {message}", phase_style(phase))
+            } else {
+                format!(
+                    "{}{phase}\u{1b}[0m: {message_style}{message}\u{1b}[0m",
+                    phase_style(phase)
+                )
+            }
+        }
+    }
+}
+
+fn color_mode_for_stream(stream: OutputStream) -> ColorMode {
+    if std::env::var_os("NO_COLOR").is_some() {
+        return ColorMode::Disabled;
+    }
+
+    let terminal_supported = match stream {
+        OutputStream::Stdout => io::stdout().is_terminal(),
+        OutputStream::Stderr => io::stderr().is_terminal(),
+    };
+    if !terminal_supported {
+        return ColorMode::Disabled;
+    }
+
+    if matches!(std::env::var("TERM"), Ok(term) if term.eq_ignore_ascii_case("dumb")) {
+        return ColorMode::Disabled;
+    }
+
+    ColorMode::Enabled
+}
+
+fn phase_style(phase: &str) -> &'static str {
+    match phase {
+        "bootstrap" => "\u{1b}[1;36m",
+        "identity" => "\u{1b}[1;35m",
+        "cluster" => "\u{1b}[1;34m",
+        "setup" => "\u{1b}[1;32m",
+        "withdrawal" => "\u{1b}[1;33m",
+        "done" => "\u{1b}[1;32m",
+        "failure" => "\u{1b}[1;31m",
+        "artifacts" => "\u{1b}[2;37m",
+        "trace" => "\u{1b}[2;37m",
+        _ => "\u{1b}[1;37m",
+    }
+}
+
+fn message_style(phase: &str, message: &str) -> &'static str {
+    let lower = message.to_ascii_lowercase();
+
+    if phase == "failure" || lower.contains("failure:") {
+        return "\u{1b}[1;31m";
+    }
+
+    if lower.contains("duress check") {
+        return "\u{1b}[1;31m";
+    }
+
+    if lower.contains("approval") || lower.contains("approvals") {
+        return "\u{1b}[1;35m";
+    }
+
+    if lower.contains("commitment-phase")
+        || lower.contains("funding path")
+        || lower.contains("locktime")
+        || lower.contains("shared state")
+        || lower.contains("request")
+    {
+        return "\u{1b}[1;33m";
+    }
+
+    if lower.contains("ping")
+        || lower.contains("pong")
+        || lower.contains("digging game round")
+        || lower.contains("reached-pings")
+    {
+        return "\u{1b}[1;36m";
+    }
+
+    if lower.contains("signature")
+        || lower.contains("signatures")
+        || lower.contains("workflow complete")
+        || lower.contains("completed withdrawal")
+        || lower.contains("setup complete")
+        || lower.contains(" ready")
+    {
+        return "\u{1b}[1;32m";
+    }
+
+    ""
 }
 
 /// Tails a set of progress logs and emits a curated terminal narrative.
@@ -120,6 +238,21 @@ struct ProgressEvent {
     stage: String,
     role: String,
     instance_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WtPingPongStep {
+    SarPingDispatch,
+    SarPongCollected,
+    PeerPongDispatch,
+    PeerPingCollected,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PeerPingPongStep {
+    WtPongReceived,
+    DuressCheckComplete,
+    WtPingSent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,11 +415,12 @@ impl NarrativeState {
                     ),
                 );
             }
-            stage if stage.starts_with("wt_ping_pong_round_") => {
-                if digging_game_round_checkpoint(stage).is_some() {
-                    self.push_withdrawal_banner(&mut lines);
-                    self.handle_withdrawal_event(&mut lines, event);
-                }
+            stage
+                if wt_ping_pong_round_step(stage).is_some()
+                    || peer_ping_pong_round_step(stage).is_some() =>
+            {
+                self.push_withdrawal_banner(&mut lines);
+                self.handle_withdrawal_event(&mut lines, event);
             }
             stage
                 if stage.starts_with("peer_withdrawal_")
@@ -368,16 +502,14 @@ impl NarrativeState {
                     "WT entered the digging game confirmation exchange",
                 ),
             ),
-            "wt_withdrawal_ping_pong_complete" | "peer_ping_pong_final_reached_pings_received" => {
-                self.push_once(
-                    lines,
-                    "withdrawal:ping_pong_complete",
-                    NarrativeLine::new(
-                        "withdrawal",
-                        "the digging game confirmation exchange completed",
-                    ),
-                )
-            }
+            "wt_withdrawal_ping_pong_complete" => self.push_once(
+                lines,
+                "withdrawal:ping_pong_complete",
+                NarrativeLine::new(
+                    "withdrawal",
+                    "the digging game confirmation exchange completed",
+                ),
+            ),
             "wt_withdrawal_complete" => self.push_once(
                 lines,
                 "withdrawal:wt_complete",
@@ -388,6 +520,37 @@ impl NarrativeState {
                 "withdrawal:digging_game_start",
                 NarrativeLine::new("withdrawal", "the digging game has started"),
             ),
+            "peer_withdrawal_initiator_duress_check_complete" => self.push_once(
+                lines,
+                &format!(
+                    "withdrawal:initiator_duress_check_complete:{}",
+                    event.instance_id
+                ),
+                NarrativeLine::new(
+                    "withdrawal",
+                    format!(
+                        "{} completed the commitment-phase duress check",
+                        event.instance_id
+                    ),
+                ),
+            ),
+            "peer_withdrawal_non_initiator_duress_check_complete" => {
+                let key = format!(
+                    "withdrawal:non_initiator_duress_check_complete:{}",
+                    event.instance_id
+                );
+                if self.seen_lines.insert(key) {
+                    lines.push(NarrativeLine::new(
+                        "withdrawal",
+                        format!(
+                            "{} completed the non-initiator approval-phase duress check ({}/{})",
+                            event.instance_id,
+                            self.count_seen("withdrawal:non_initiator_duress_check_complete:"),
+                            self.expected_non_initiators()
+                        ),
+                    ));
+                }
+            }
             "peer_withdrawal_finish_signing_start" => self.push_once(
                 lines,
                 "withdrawal:digging_game_finish_signing",
@@ -416,15 +579,27 @@ impl NarrativeState {
                     ));
                 }
             }
+            "peer_ping_pong_final_reached_pings_received" => {
+                let key = format!("withdrawal:peer_final_release:{}", event.instance_id);
+                if self.seen_lines.insert(key) {
+                    lines.push(NarrativeLine::new(
+                        "withdrawal",
+                        format!(
+                            "{} received the final reached-pings state ({}/{})",
+                            event.instance_id,
+                            self.count_seen("withdrawal:peer_final_release:"),
+                            self.expected_peers
+                        ),
+                    ));
+                }
+            }
             stage => {
-                if let Some(round) = digging_game_round_checkpoint(stage) {
-                    let key = format!("withdrawal:digging_game_round:{round}");
-                    if self.seen_lines.insert(key) {
-                        lines.push(NarrativeLine::new(
-                            "withdrawal",
-                            format!("digging game round {round} is underway"),
-                        ));
-                    }
+                if let Some((round, step)) = peer_ping_pong_round_step(stage) {
+                    self.handle_peer_ping_pong_round_step(lines, event, round, step);
+                    return;
+                }
+                if let Some((round, step)) = wt_ping_pong_round_step(stage) {
+                    self.handle_wt_ping_pong_round_step(lines, round, step);
                     return;
                 }
                 if is_low_signal_stage(stage) {
@@ -473,6 +648,78 @@ impl NarrativeState {
             .iter()
             .filter(|key| key.starts_with(prefix))
             .count()
+    }
+
+    fn handle_wt_ping_pong_round_step(
+        &mut self,
+        lines: &mut Vec<NarrativeLine>,
+        round: usize,
+        step: WtPingPongStep,
+    ) {
+        let (suffix, message) = match step {
+            WtPingPongStep::SarPingDispatch => (
+                "sar_ping_dispatch",
+                format!("digging game round {round}: WT dispatched SAR pings"),
+            ),
+            WtPingPongStep::SarPongCollected => (
+                "sar_pong_collected",
+                format!("digging game round {round}: WT collected SAR pongs"),
+            ),
+            WtPingPongStep::PeerPongDispatch => (
+                "peer_pong_dispatch",
+                format!("digging game round {round}: WT dispatched peer pongs"),
+            ),
+            WtPingPongStep::PeerPingCollected => (
+                "peer_ping_collected",
+                format!("digging game round {round}: WT collected peer pings"),
+            ),
+        };
+
+        self.push_once(
+            lines,
+            &format!("withdrawal:wt_ping_pong_round:{round}:{suffix}"),
+            NarrativeLine::new("withdrawal", message),
+        );
+    }
+
+    fn handle_peer_ping_pong_round_step(
+        &mut self,
+        lines: &mut Vec<NarrativeLine>,
+        event: &ProgressEvent,
+        round: usize,
+        step: PeerPingPongStep,
+    ) {
+        let (prefix, verb) = match step {
+            PeerPingPongStep::WtPongReceived => (
+                format!("withdrawal:peer_round_wt_pong_received:{round}:"),
+                "received the WT pong",
+            ),
+            PeerPingPongStep::DuressCheckComplete => (
+                format!("withdrawal:peer_round_duress_check_complete:{round}:"),
+                "completed the duress check",
+            ),
+            PeerPingPongStep::WtPingSent => (
+                format!("withdrawal:peer_round_wt_ping_sent:{round}:"),
+                "sent the WT ping",
+            ),
+        };
+        let key = format!("{prefix}{}", event.instance_id);
+        if self.seen_lines.insert(key) {
+            lines.push(NarrativeLine::new(
+                "withdrawal",
+                format!(
+                    "digging game round {round}: {} {} ({}/{})",
+                    event.instance_id,
+                    verb,
+                    self.count_seen(&prefix),
+                    self.expected_peers
+                ),
+            ));
+        }
+    }
+
+    fn expected_non_initiators(&self) -> usize {
+        self.expected_peers.saturating_sub(1)
     }
 }
 
@@ -539,33 +786,45 @@ fn parse_progress_event(line: &str) -> Option<ProgressEvent> {
 }
 
 fn is_low_signal_stage(stage: &str) -> bool {
-    stage.contains("ping_pong_round_")
-        || matches!(
-            stage,
-            "peer_withdrawal_start"
-                | "peer_withdrawal_initiator_aggregation_start"
-                | "peer_withdrawal_non_initiator_approval_start"
-                | "peer_withdrawal_non_initiator_ack_start"
-                | "peer_withdrawal_non_initiator_commit_start"
-                | "sar_withdrawal_initiator_path"
-                | "sar_withdrawal_non_initiator_path"
-        )
+    matches!(
+        stage,
+        "peer_withdrawal_start"
+            | "peer_withdrawal_initiator_aggregation_start"
+            | "peer_withdrawal_non_initiator_approval_start"
+            | "peer_withdrawal_non_initiator_ack_start"
+            | "peer_withdrawal_non_initiator_commit_start"
+            | "sar_withdrawal_initiator_path"
+            | "sar_withdrawal_non_initiator_path"
+    )
 }
 
-fn digging_game_round_checkpoint(stage: &str) -> Option<usize> {
-    let prefix = "wt_ping_pong_round_";
-    let suffix = "_sar_ping_dispatch";
-    if !stage.starts_with(prefix) || !stage.ends_with(suffix) {
-        return None;
-    }
+fn wt_ping_pong_round_step(stage: &str) -> Option<(usize, WtPingPongStep)> {
+    let (round, suffix) = parse_round_stage(stage, "wt_ping_pong_round_")?;
+    let step = match suffix {
+        "sar_ping_dispatch" => WtPingPongStep::SarPingDispatch,
+        "sar_pong_collected" => WtPingPongStep::SarPongCollected,
+        "peer_pong_dispatch" => WtPingPongStep::PeerPongDispatch,
+        "peer_ping_collected" => WtPingPongStep::PeerPingCollected,
+        _ => return None,
+    };
+    Some((round, step))
+}
 
-    let round = stage
-        .strip_prefix(prefix)?
-        .strip_suffix(suffix)?
-        .parse::<usize>()
-        .ok()?;
+fn peer_ping_pong_round_step(stage: &str) -> Option<(usize, PeerPingPongStep)> {
+    let (round, suffix) = parse_round_stage(stage, "peer_ping_pong_round_")?;
+    let step = match suffix {
+        "wt_pong_received" => PeerPingPongStep::WtPongReceived,
+        "duress_check_complete" => PeerPingPongStep::DuressCheckComplete,
+        "wt_ping_sent" => PeerPingPongStep::WtPingSent,
+        _ => return None,
+    };
+    Some((round, step))
+}
 
-    ((1..=3).contains(&round) || round.is_multiple_of(10)).then_some(round)
+fn parse_round_stage<'a>(stage: &'a str, prefix: &str) -> Option<(usize, &'a str)> {
+    let remainder = stage.strip_prefix(prefix)?;
+    let (round, suffix) = remainder.split_once('_')?;
+    Some((round.parse::<usize>().ok()?, suffix))
 }
 
 #[cfg(test)]
@@ -577,8 +836,8 @@ mod tests {
     };
 
     use super::{
-        NarrativeState, digging_game_round_checkpoint, parse_progress_event,
-        read_new_progress_events,
+        ColorMode, NarrativeState, format_narrative_line_with_mode, parse_progress_event,
+        peer_ping_pong_round_step, read_new_progress_events, wt_ping_pong_round_step,
     };
 
     fn unique_temp_path(name: &str) -> std::path::PathBuf {
@@ -607,6 +866,62 @@ mod tests {
         assert_eq!(event.stage, "wt_setup_start");
         assert_eq!(event.role, "wt");
         assert_eq!(event.instance_id, "wt");
+    }
+
+    #[test]
+    fn colorized_narrative_lines_style_the_phase_label() {
+        let line = format_narrative_line_with_mode(
+            ColorMode::Enabled,
+            "withdrawal",
+            "WT dispatched SAR pings",
+        );
+
+        assert!(line.contains("\u{1b}[1;33mwithdrawal\u{1b}[0m"));
+        assert!(line.contains(": \u{1b}[1;36mWT dispatched SAR pings\u{1b}[0m"));
+    }
+
+    #[test]
+    fn disabled_color_mode_keeps_the_line_plain() {
+        let line =
+            format_narrative_line_with_mode(ColorMode::Disabled, "setup", "WT setup complete");
+
+        assert_eq!(line, "setup: WT setup complete");
+    }
+
+    #[test]
+    fn approvals_are_colored_differently_from_ping_pong_steps() {
+        let approvals = format_narrative_line_with_mode(
+            ColorMode::Enabled,
+            "withdrawal",
+            "WT collected the non-initiator approvals",
+        );
+        let ping_pong = format_narrative_line_with_mode(
+            ColorMode::Enabled,
+            "withdrawal",
+            "digging game round 7: peer-2 sent the WT ping (2/5)",
+        );
+
+        assert!(
+            approvals.contains(": \u{1b}[1;35mWT collected the non-initiator approvals\u{1b}[0m")
+        );
+        assert!(ping_pong.contains(
+            ": \u{1b}[1;36mdigging game round 7: peer-2 sent the WT ping (2/5)\u{1b}[0m"
+        ));
+    }
+
+    #[test]
+    fn duress_checks_are_colored_as_high_attention_events() {
+        let line = format_narrative_line_with_mode(
+            ColorMode::Enabled,
+            "withdrawal",
+            "peer-4 completed the commitment-phase duress check",
+        );
+
+        assert!(
+            line.contains(
+                ": \u{1b}[1;31mpeer-4 completed the commitment-phase duress check\u{1b}[0m"
+            )
+        );
     }
 
     #[test]
@@ -750,17 +1065,51 @@ mod tests {
     }
 
     #[test]
-    fn suppresses_low_signal_ping_pong_round_stages() {
+    fn surfaces_all_wt_ping_pong_round_steps() {
         let mut state = NarrativeState::default();
         state.known_processes.insert("wt:wt".to_owned());
 
-        let lines = state.lines_for_event(&super::ProgressEvent {
+        let sar_ping = state.lines_for_event(&super::ProgressEvent {
             stage: "wt_ping_pong_round_12_sar_ping_dispatch".to_owned(),
             role: "wt".to_owned(),
             instance_id: "wt".to_owned(),
         });
+        let sar_pong = state.lines_for_event(&super::ProgressEvent {
+            stage: "wt_ping_pong_round_12_sar_pong_collected".to_owned(),
+            role: "wt".to_owned(),
+            instance_id: "wt".to_owned(),
+        });
+        let peer_pong = state.lines_for_event(&super::ProgressEvent {
+            stage: "wt_ping_pong_round_12_peer_pong_dispatch".to_owned(),
+            role: "wt".to_owned(),
+            instance_id: "wt".to_owned(),
+        });
+        let peer_ping = state.lines_for_event(&super::ProgressEvent {
+            stage: "wt_ping_pong_round_12_peer_ping_collected".to_owned(),
+            role: "wt".to_owned(),
+            instance_id: "wt".to_owned(),
+        });
 
-        assert!(lines.is_empty());
+        assert!(
+            sar_ping
+                .iter()
+                .any(|line| line.message.contains("round 12: WT dispatched SAR pings"))
+        );
+        assert!(
+            sar_pong
+                .iter()
+                .any(|line| line.message.contains("round 12: WT collected SAR pongs"))
+        );
+        assert!(
+            peer_pong
+                .iter()
+                .any(|line| line.message.contains("round 12: WT dispatched peer pongs"))
+        );
+        assert!(
+            peer_ping
+                .iter()
+                .any(|line| line.message.contains("round 12: WT collected peer pings"))
+        );
     }
 
     #[test]
@@ -792,51 +1141,109 @@ mod tests {
     }
 
     #[test]
-    fn surfaces_selected_digging_game_round_checkpoints() {
-        let mut state = NarrativeState::default();
-        state.known_processes.insert("wt:wt-1".to_owned());
+    fn surfaces_peer_duress_check_milestones() {
+        let mut state = NarrativeState {
+            expected_peers: 5,
+            ..Default::default()
+        };
+        for peer in 1..=5 {
+            state.known_processes.insert(format!("peer:peer-{peer}"));
+        }
 
-        let round_one = state.lines_for_event(&super::ProgressEvent {
-            stage: "wt_ping_pong_round_1_sar_ping_dispatch".to_owned(),
-            role: "wt".to_owned(),
-            instance_id: "wt-1".to_owned(),
-        });
-        let round_four = state.lines_for_event(&super::ProgressEvent {
-            stage: "wt_ping_pong_round_4_sar_ping_dispatch".to_owned(),
-            role: "wt".to_owned(),
-            instance_id: "wt-1".to_owned(),
-        });
-        let round_ten = state.lines_for_event(&super::ProgressEvent {
-            stage: "wt_ping_pong_round_10_sar_ping_dispatch".to_owned(),
-            role: "wt".to_owned(),
-            instance_id: "wt-1".to_owned(),
+        let initiator = state.lines_for_event(&super::ProgressEvent {
+            stage: "peer_withdrawal_initiator_duress_check_complete".to_owned(),
+            role: "peer".to_owned(),
+            instance_id: "peer-1".to_owned(),
         });
 
+        let mut final_non_initiator = Vec::new();
+        for peer in 2..=5 {
+            final_non_initiator = state.lines_for_event(&super::ProgressEvent {
+                stage: "peer_withdrawal_non_initiator_duress_check_complete".to_owned(),
+                role: "peer".to_owned(),
+                instance_id: format!("peer-{peer}"),
+            });
+        }
+
         assert!(
-            round_one
+            initiator
                 .iter()
-                .any(|line| line.message.contains("digging game round 1"))
+                .any(|line| line.message.contains("commitment-phase duress check"))
         );
-        assert!(round_four.is_empty());
-        assert!(
-            round_ten
-                .iter()
-                .any(|line| line.message.contains("digging game round 10"))
-        );
+        assert!(final_non_initiator.iter().any(|line| {
+            line.message
+                .contains("peer-5 completed the non-initiator approval-phase duress check (4/4)")
+        }));
     }
 
     #[test]
-    fn parses_digging_game_round_checkpoints() {
+    fn surfaces_all_peer_ping_pong_and_duress_steps() {
+        let mut state = NarrativeState {
+            expected_peers: 2,
+            ..Default::default()
+        };
+        state.known_processes.insert("peer:peer-1".to_owned());
+        state.known_processes.insert("peer:peer-2".to_owned());
+
+        let pong = state.lines_for_event(&super::ProgressEvent {
+            stage: "peer_ping_pong_round_4_wt_pong_received".to_owned(),
+            role: "peer".to_owned(),
+            instance_id: "peer-1".to_owned(),
+        });
+        let duress = state.lines_for_event(&super::ProgressEvent {
+            stage: "peer_ping_pong_round_4_duress_check_complete".to_owned(),
+            role: "peer".to_owned(),
+            instance_id: "peer-2".to_owned(),
+        });
+        let ping = state.lines_for_event(&super::ProgressEvent {
+            stage: "peer_ping_pong_round_4_wt_ping_sent".to_owned(),
+            role: "peer".to_owned(),
+            instance_id: "peer-1".to_owned(),
+        });
+        let final_release = state.lines_for_event(&super::ProgressEvent {
+            stage: "peer_ping_pong_final_reached_pings_received".to_owned(),
+            role: "peer".to_owned(),
+            instance_id: "peer-1".to_owned(),
+        });
+
+        assert!(pong.iter().any(|line| {
+            line.message
+                .contains("digging game round 4: peer-1 received the WT pong (1/2)")
+        }));
+        assert!(duress.iter().any(|line| {
+            line.message
+                .contains("digging game round 4: peer-2 completed the duress check (1/2)")
+        }));
+        assert!(ping.iter().any(|line| {
+            line.message
+                .contains("digging game round 4: peer-1 sent the WT ping (1/2)")
+        }));
+        assert!(final_release.iter().any(|line| {
+            line.message
+                .contains("peer-1 received the final reached-pings state (1/2)")
+        }));
+    }
+
+    #[test]
+    fn parses_ping_pong_round_steps() {
         assert_eq!(
-            digging_game_round_checkpoint("wt_ping_pong_round_1_sar_ping_dispatch"),
-            Some(1)
+            wt_ping_pong_round_step("wt_ping_pong_round_1_sar_ping_dispatch"),
+            Some((1, super::WtPingPongStep::SarPingDispatch))
         );
         assert_eq!(
-            digging_game_round_checkpoint("wt_ping_pong_round_4_sar_ping_dispatch"),
-            None
+            wt_ping_pong_round_step("wt_ping_pong_round_4_peer_ping_collected"),
+            Some((4, super::WtPingPongStep::PeerPingCollected))
         );
         assert_eq!(
-            digging_game_round_checkpoint("peer_ping_pong_round_1_wt_ping_sent"),
+            peer_ping_pong_round_step("peer_ping_pong_round_1_wt_ping_sent"),
+            Some((1, super::PeerPingPongStep::WtPingSent))
+        );
+        assert_eq!(
+            peer_ping_pong_round_step("peer_ping_pong_round_1_duress_check_complete"),
+            Some((1, super::PeerPingPongStep::DuressCheckComplete))
+        );
+        assert_eq!(
+            peer_ping_pong_round_step("peer_ping_pong_round_1_unknown"),
             None
         );
     }
