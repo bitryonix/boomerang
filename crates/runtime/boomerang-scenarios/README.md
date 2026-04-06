@@ -8,4 +8,4 @@ separate helper builds the WT/SAR identity-publication configs that `poc-runtime
 cluster manifest is assembled.
 
 The default run-artifact base returned by `default_state_root()` is now the visible workspace-root
-[`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md) directory.
+[`poc-runs/`](../../../poc-runs/README.md) directory.

@@ -88,7 +88,7 @@ bitcoin-29.0/
 
 ## Run Artifacts
 
-The default PoC run-artifact base is now [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+The default PoC run-artifact base is now [`poc-runs/`](poc-runs/README.md)
 in the workspace root so operators can find generated manifests, per-process state directories, and
 logs without digging through the system temp directory.
 
@@ -179,13 +179,14 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-it
 
 ## Documentation Map
 
-- Workspace architecture: [Architecture.md](/Users/bedlam/Desktop/getting_rusty/boomerang/Architecture.md)
-- Workspace design decisions: [DesignDecisions.md](/Users/bedlam/Desktop/getting_rusty/boomerang/DesignDecisions.md)
-- Workspace limitations: [Limitations.md](/Users/bedlam/Desktop/getting_rusty/boomerang/Limitations.md)
-- Operational notes: [docs/operations.md](/Users/bedlam/Desktop/getting_rusty/boomerang/docs/operations.md)
-- Repository ADR baseline: [docs/adr/0001-repository-compliance-baseline.md](/Users/bedlam/Desktop/getting_rusty/boomerang/docs/adr/0001-repository-compliance-baseline.md)
-- PoC area overview: [poc/README.md](/Users/bedlam/Desktop/getting_rusty/boomerang/poc/README.md)
-- Supported PoC runner: [poc/poc-runtime/README.md](/Users/bedlam/Desktop/getting_rusty/boomerang/poc/poc-runtime/README.md)
+- Workspace architecture: [Architecture.md](Architecture.md)
+- Workspace design decisions: [DesignDecisions.md](DesignDecisions.md)
+- Workspace limitations: [Limitations.md](Limitations.md)
+- Operational notes: [docs/operations.md](docs/operations.md)
+- ADR index: [docs/adr/README.md](docs/adr/README.md)
+- Repository ADR baseline: [docs/adr/0001-repository-compliance-baseline.md](docs/adr/0001-repository-compliance-baseline.md)
+- PoC area overview: [poc/README.md](poc/README.md)
+- Supported PoC runner: [poc/poc-runtime/README.md](poc/poc-runtime/README.md)
 
 ## Roadmap
 

@@ -21,6 +21,7 @@
 mod actors;
 mod app;
 mod envelopes;
+mod error_ext;
 mod local_actor;
 mod tracing_setup;
 mod transport;

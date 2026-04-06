@@ -20,7 +20,7 @@ expectations for the current workspace.
 
 ## Default PoC Artifact Location
 
-The default PoC artifact base is now [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+The default PoC artifact base is now [`poc-runs/`](../poc-runs/README.md)
 at the workspace root.
 
 By default, `poc-runtime` treats `--state-root` as a base directory for one fresh child run

@@ -78,9 +78,8 @@ pub struct TorAddress {
 }
 
 impl TorAddress {
-    pub fn new(onion_v3_address: String) -> Self {
+    pub fn new(onion_v3_address: String) -> Result<Self, TorAddressParseError> {
         Self::try_new(onion_v3_address)
-            .unwrap_or_else(|err| panic!("invalid Tor onion address: {err}"))
     }
 
     pub fn try_new(onion_v3_address: impl Into<String>) -> Result<Self, TorAddressParseError> {
@@ -118,6 +117,10 @@ impl TorAddress {
         }
 
         Ok(TorAddress { onion_v3_address })
+    }
+
+    pub(crate) fn from_valid_onion_v3_address(onion_v3_address: String) -> Self {
+        TorAddress { onion_v3_address }
     }
 
     pub fn as_str(&self) -> &str {

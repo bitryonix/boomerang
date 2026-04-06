@@ -23,7 +23,10 @@ use tokio::sync::{Barrier, mpsc};
 use tracing::{debug, info};
 use wt::Wt;
 
-use crate::envelopes::{PeerToWtEnvelope, SarToWtEnvelope, WtToPeerEnvelope, WtToSarEnvelope};
+use crate::{
+    envelopes::{PeerToWtEnvelope, SarToWtEnvelope, WtToPeerEnvelope, WtToSarEnvelope},
+    error_ext::{NetworkedResult, OrErr, unexpected},
+};
 
 pub struct WtActor {
     wt: Wt,
@@ -56,7 +59,7 @@ impl WtActor {
         }
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> NetworkedResult<()> {
         let num_peers = self.peer_rxs.len();
         let num_sars = self.sar_rxs.len();
 
@@ -69,7 +72,7 @@ impl WtActor {
         let mut boomlet_pubkey_to_channel: HashMap<PublicKey, usize> = HashMap::new();
         let mut msg1_items: Vec<MetadataAttachedMessage<PublicKey, _>> = Vec::new();
         for idx in 0..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::SetupNisoWtMessage1 {
                     boomlet_identity_pubkey,
                     msg,
@@ -77,108 +80,124 @@ impl WtActor {
                     boomlet_pubkey_to_channel.insert(boomlet_identity_pubkey, idx);
                     msg1_items.push(MetadataAttachedMessage::new(boomlet_identity_pubkey, msg));
                 }
-                _ => panic!("WtActor: expected SetupNisoWtMessage1 from peer {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected SetupNisoWtMessage1 from peer {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_setup_niso_wt_message_1(Parcel::new(msg1_items))
-            .unwrap();
+            .or_err()?;
         debug!("WtActor: consumed SetupNisoWtMessage1 from all peers.");
         info!("WtActor: collected peer identities and opening WT sessions.");
 
         // Produce SetupWtNisoMessage1 → route to each peer by WtPeerId.
         // Also build wt_peer_id → channel_idx for all subsequent WT→Peer routing.
-        let wt_niso_msg1_parcel = self.wt.produce_setup_wt_niso_message_1().unwrap();
+        let wt_niso_msg1_parcel = self.wt.produce_setup_wt_niso_message_1().or_err()?;
         let mut wt_peer_id_to_channel: HashMap<WtPeerId, usize> = HashMap::new();
         for item in wt_niso_msg1_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = *boomlet_pubkey_to_channel
                 .get(wt_peer_id.get_boomlet_identity_pubkey())
-                .unwrap();
+                .or_err()?;
             wt_peer_id_to_channel.insert(wt_peer_id, idx);
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::SetupWtNisoMessage1(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
         debug!("WtActor: sent SetupWtNisoMessage1 to all peers.");
 
         // Collect SetupNisoWtMessage2 from all peers.
         let mut msg2_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 0..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::SetupNisoWtMessage2 { wt_peer_id, msg } => {
                     msg2_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
-                _ => panic!("WtActor: expected SetupNisoWtMessage2 from peer {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected SetupNisoWtMessage2 from peer {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_setup_niso_wt_message_2(Parcel::new(msg2_items))
-            .unwrap();
+            .or_err()?;
 
         // Produce SetupWtNisoMessage2 → route to each peer.
-        let wt_niso_msg2_parcel = self.wt.produce_setup_wt_niso_message_2().unwrap();
+        let wt_niso_msg2_parcel = self.wt.produce_setup_wt_niso_message_2().or_err()?;
         for item in wt_niso_msg2_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::SetupWtNisoMessage2(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
         debug!("WtActor: setup round 2 done.");
 
         // Collect SetupNisoWtMessage3 from all peers (contains SarIds).
         let mut msg3_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 0..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::SetupNisoWtMessage3 { wt_peer_id, msg } => {
                     msg3_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
-                _ => panic!("WtActor: expected SetupNisoWtMessage3 from peer {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected SetupNisoWtMessage3 from peer {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_setup_niso_wt_message_3(Parcel::new(msg3_items))
-            .unwrap();
+            .or_err()?;
         info!("WtActor: learned peer-to-SAR assignments and is finalizing SAR registration.");
 
         // Produce SetupWtSarMessage1 → route to each SAR by SarId.
-        let wt_sar_msg1_parcel = self.wt.produce_setup_wt_sar_message_1().unwrap();
+        let wt_sar_msg1_parcel = self.wt.produce_setup_wt_sar_message_1().or_err()?;
         for item in wt_sar_msg1_parcel.open() {
             let (sar_id, msg) = item.into_parts();
             let idx = self.sar_id_to_channel[&sar_id];
             self.sar_txs[idx]
                 .send(WtToSarEnvelope::SetupWtSarMessage1(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect SetupSarWtMessage1 from all SARs.
         let mut sar_msg1_items: Vec<MetadataAttachedMessage<SarId, _>> = Vec::new();
         for idx in 0..num_sars {
-            match self.sar_rxs[idx].recv().await.unwrap() {
+            match self.sar_rxs[idx].recv().await.or_err()? {
                 SarToWtEnvelope::SetupSarWtMessage1 { sar_id, msg } => {
                     sar_msg1_items.push(MetadataAttachedMessage::new(sar_id, *msg));
                 }
-                _ => panic!("WtActor: expected SetupSarWtMessage1 from SAR {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected SetupSarWtMessage1 from SAR {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_setup_sar_wt_message_1(Parcel::new(sar_msg1_items))
-            .unwrap();
+            .or_err()?;
         info!("WtActor: SAR registration complete; releasing final setup state to peers.");
 
         // Produce SetupWtNisoMessage3 → route to each peer.
-        let wt_niso_msg3_parcel = self.wt.produce_setup_wt_niso_message_3().unwrap();
+        let wt_niso_msg3_parcel = self.wt.produce_setup_wt_niso_message_3().or_err()?;
         for item in wt_niso_msg3_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::SetupWtNisoMessage3(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         info!("WtActor: setup complete.");
@@ -188,16 +207,16 @@ impl WtActor {
         // Peer 0 is the withdrawal initiator.
 
         // Receive WithdrawalNisoWtMessage1 from initiator (peer 0).
-        let (initiator_wt_peer_id, wd_msg1) = match self.peer_rxs[0].recv().await.unwrap() {
+        let (initiator_wt_peer_id, wd_msg1) = match self.peer_rxs[0].recv().await.or_err()? {
             PeerToWtEnvelope::WithdrawalNisoWtMessage1 { wt_peer_id, msg } => (wt_peer_id, msg),
-            _ => panic!("WtActor: expected WithdrawalNisoWtMessage1 from initiator"),
+            _ => return unexpected("WtActor: expected WithdrawalNisoWtMessage1 from initiator"),
         };
         self.wt
             .consume_withdrawal_niso_wt_message_1(MetadataAttachedMessage::new(
                 initiator_wt_peer_id.clone(),
                 wd_msg1,
             ))
-            .unwrap();
+            .or_err()?;
         info!(
             "WtActor: received initiator withdrawal request; collecting non-initiator approvals."
         );
@@ -206,91 +225,94 @@ impl WtActor {
         let ni_msg1_parcel = self
             .wt
             .produce_withdrawal_wt_non_initiator_niso_message_1()
-            .unwrap();
+            .or_err()?;
         for item in ni_msg1_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::WithdrawalWtNonInitiatorNisoMessage1(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalNonInitiatorNisoWtMessage1 from non-initiator peers.
         let mut ni_niso_msg1_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 1..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::WithdrawalNonInitiatorNisoWtMessage1 { wt_peer_id, msg } => {
                     ni_niso_msg1_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
                 _ => {
-                    panic!("WtActor: expected WithdrawalNonInitiatorNisoWtMessage1 from peer {idx}")
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNonInitiatorNisoWtMessage1 from peer {idx}"
+                    ));
                 }
             }
         }
         self.wt
             .consume_withdrawal_non_initiator_niso_wt_message_1(Parcel::new(ni_niso_msg1_items))
-            .unwrap();
+            .or_err()?;
 
         // Produce → non-initiator peers.
         let ni_msg2_parcel = self
             .wt
             .produce_withdrawal_wt_non_initiator_niso_message_2()
-            .unwrap();
+            .or_err()?;
         for item in ni_msg2_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::WithdrawalWtNonInitiatorNisoMessage2(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalNonInitiatorNisoWtMessage2 from non-initiator peers.
         let mut ni_niso_msg2_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 1..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::WithdrawalNonInitiatorNisoWtMessage2 { wt_peer_id, msg } => {
                     ni_niso_msg2_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
                 _ => {
-                    panic!("WtActor: expected WithdrawalNonInitiatorNisoWtMessage2 from peer {idx}")
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNonInitiatorNisoWtMessage2 from peer {idx}"
+                    ));
                 }
             }
         }
         self.wt
             .consume_withdrawal_non_initiator_niso_wt_message_2(Parcel::new(ni_niso_msg2_items))
-            .unwrap();
+            .or_err()?;
         debug!("WtActor: non-initiator tx approval phase done.");
         info!(
             "WtActor: non-initiator approvals collected; asking initiator to aggregate the transaction."
         );
 
         // Produce WithdrawalWtNisoMessage1 (single) → initiator peer only.
-        let wt_niso_wd_msg1 = self.wt.produce_withdrawal_wt_niso_message_1().unwrap();
+        let wt_niso_wd_msg1 = self.wt.produce_withdrawal_wt_niso_message_1().or_err()?;
         self.peer_txs[0]
             .send(WtToPeerEnvelope::WithdrawalWtNisoMessage1(wt_niso_wd_msg1))
             .await
-            .unwrap();
+            .or_err()?;
 
         // Receive WithdrawalNisoWtMessage2 (single) from initiator.
-        let wd_msg2 = match self.peer_rxs[0].recv().await.unwrap() {
+        let wd_msg2 = match self.peer_rxs[0].recv().await.or_err()? {
             PeerToWtEnvelope::WithdrawalNisoWtMessage2 { wt_peer_id, msg } => {
-                assert_eq!(
-                    wt_peer_id, initiator_wt_peer_id,
-                    "WtActor: initiator changed WT peer id during withdrawal"
-                );
+                if wt_peer_id != initiator_wt_peer_id {
+                    return unexpected("WtActor: initiator changed WT peer id during withdrawal");
+                }
                 msg
             }
-            _ => panic!("WtActor: expected WithdrawalNisoWtMessage2 from initiator"),
+            _ => return unexpected("WtActor: expected WithdrawalNisoWtMessage2 from initiator"),
         };
         self.wt
             .consume_withdrawal_niso_wt_message_2(wd_msg2)
-            .unwrap();
+            .or_err()?;
         info!("WtActor: initiator aggregation received; starting initiator-side SAR duress check.");
 
         // Produce → all SARs (initiator duress check).
-        let wt_sar_wd_msg1_parcel = self.wt.produce_withdrawal_wt_sar_message_1().unwrap();
+        let wt_sar_wd_msg1_parcel = self.wt.produce_withdrawal_wt_sar_message_1().or_err()?;
         let mut initiator_sar_channels: Vec<usize> = Vec::new();
         for item in wt_sar_wd_msg1_parcel.open() {
             let (sar_id, msg) = item.into_parts();
@@ -299,22 +321,26 @@ impl WtActor {
             self.sar_txs[idx]
                 .send(WtToSarEnvelope::WithdrawalWtSarMessage1(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalSarWtMessage1 from the SARs that received it.
         let mut sar_wd_msg1_items: Vec<MetadataAttachedMessage<SarId, _>> = Vec::new();
         for idx in initiator_sar_channels {
-            match self.sar_rxs[idx].recv().await.unwrap() {
+            match self.sar_rxs[idx].recv().await.or_err()? {
                 SarToWtEnvelope::WithdrawalSarWtMessage1 { sar_id, msg } => {
                     sar_wd_msg1_items.push(MetadataAttachedMessage::new(sar_id, msg));
                 }
-                _ => panic!("WtActor: expected WithdrawalSarWtMessage1 from SAR {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalSarWtMessage1 from SAR {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_withdrawal_sar_wt_message_1(Parcel::new(sar_wd_msg1_items))
-            .unwrap();
+            .or_err()?;
         debug!("WtActor: initiator SAR duress check done.");
         info!("WtActor: initiator-side SAR checks complete; requesting non-initiator commits.");
 
@@ -322,31 +348,33 @@ impl WtActor {
         let ni_msg3_parcel = self
             .wt
             .produce_withdrawal_wt_non_initiator_niso_message_3()
-            .unwrap();
+            .or_err()?;
         for item in ni_msg3_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::WithdrawalWtNonInitiatorNisoMessage3(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalNonInitiatorNisoWtMessage3 from non-initiator peers.
         let mut ni_niso_msg3_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 1..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::WithdrawalNonInitiatorNisoWtMessage3 { wt_peer_id, msg } => {
                     ni_niso_msg3_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
                 _ => {
-                    panic!("WtActor: expected WithdrawalNonInitiatorNisoWtMessage3 from peer {idx}")
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNonInitiatorNisoWtMessage3 from peer {idx}"
+                    ));
                 }
             }
         }
         self.wt
             .consume_withdrawal_non_initiator_niso_wt_message_3(Parcel::new(ni_niso_msg3_items))
-            .unwrap();
+            .or_err()?;
         info!("WtActor: non-initiator commits collected; starting non-initiator SAR duress check.");
 
         // Produce → non-initiator SARs (non-initiator duress check).
@@ -354,7 +382,7 @@ impl WtActor {
         let ni_sar_msg1_parcel = self
             .wt
             .produce_withdrawal_wt_non_initiator_sar_message_1()
-            .unwrap();
+            .or_err()?;
         let mut ni_sar_channels: Vec<usize> = Vec::new();
         for item in ni_sar_msg1_parcel.open() {
             let (sar_id, msg) = item.into_parts();
@@ -363,51 +391,59 @@ impl WtActor {
             self.sar_txs[idx]
                 .send(WtToSarEnvelope::WithdrawalWtNonInitiatorSarMessage1(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalNonInitiatorSarWtMessage1 from non-initiator SARs.
         let mut ni_sar_msg1_items: Vec<MetadataAttachedMessage<SarId, _>> = Vec::new();
         for idx in ni_sar_channels {
-            match self.sar_rxs[idx].recv().await.unwrap() {
+            match self.sar_rxs[idx].recv().await.or_err()? {
                 SarToWtEnvelope::WithdrawalNonInitiatorSarWtMessage1 { sar_id, msg } => {
                     ni_sar_msg1_items.push(MetadataAttachedMessage::new(sar_id, msg));
                 }
-                _ => panic!("WtActor: expected WithdrawalNonInitiatorSarWtMessage1 from SAR {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNonInitiatorSarWtMessage1 from SAR {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_withdrawal_non_initiator_sar_wt_message_1(Parcel::new(ni_sar_msg1_items))
-            .unwrap();
+            .or_err()?;
         debug!("WtActor: non-initiator SAR duress check done.");
         info!(
             "WtActor: all SAR checks complete; distributing the shared withdrawal state to peers."
         );
 
         // Produce → all peers (PSBT distribution).
-        let wt_niso_wd_msg2_parcel = self.wt.produce_withdrawal_wt_niso_message_2().unwrap();
+        let wt_niso_wd_msg2_parcel = self.wt.produce_withdrawal_wt_niso_message_2().or_err()?;
         for item in wt_niso_wd_msg2_parcel.open() {
             let (wt_peer_id, msg) = item.into_parts();
             let idx = wt_peer_id_to_channel[&wt_peer_id];
             self.peer_txs[idx]
                 .send(WtToPeerEnvelope::WithdrawalWtNisoMessage2(msg))
                 .await
-                .unwrap();
+                .or_err()?;
         }
 
         // Collect WithdrawalNisoWtMessage3 (ping) from all peers.
         let mut niso_wd_msg3_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 0..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::WithdrawalNisoWtMessage3 { wt_peer_id, msg } => {
                     niso_wd_msg3_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
-                _ => panic!("WtActor: expected WithdrawalNisoWtMessage3 from peer {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNisoWtMessage3 from peer {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_withdrawal_niso_wt_message_3(Parcel::new(niso_wd_msg3_items))
-            .unwrap();
+            .or_err()?;
         info!("WtActor: received first digging ping from every peer; entering ping-pong loop.");
 
         // ── Ping-pong loop ────────────────────────────────────────────────────
@@ -416,7 +452,7 @@ impl WtActor {
             match self
                 .wt
                 .produce_withdrawal_wt_sar_message_2_or_produce_withdrawal_wt_niso_message_4()
-                .unwrap()
+                .or_err()?
             {
                 BranchingMessage2::First(sar_msg2_parcel) => {
                     if ping_pong_round <= 3 || ping_pong_round.is_multiple_of(10) {
@@ -430,50 +466,56 @@ impl WtActor {
                         self.sar_txs[idx]
                             .send(WtToSarEnvelope::WithdrawalWtSarMessage2(msg))
                             .await
-                            .unwrap();
+                            .or_err()?;
                     }
 
                     // Collect pong from all SARs.
                     let mut sar_msg2_items: Vec<MetadataAttachedMessage<SarId, _>> = Vec::new();
                     for idx in 0..num_sars {
-                        match self.sar_rxs[idx].recv().await.unwrap() {
+                        match self.sar_rxs[idx].recv().await.or_err()? {
                             SarToWtEnvelope::WithdrawalSarWtMessage2 { sar_id, msg } => {
                                 sar_msg2_items.push(MetadataAttachedMessage::new(sar_id, msg));
                             }
-                            _ => panic!("WtActor: expected WithdrawalSarWtMessage2 from SAR {idx}"),
+                            _ => {
+                                return unexpected(format!(
+                                    "WtActor: expected WithdrawalSarWtMessage2 from SAR {idx}"
+                                ));
+                            }
                         }
                     }
                     self.wt
                         .consume_withdrawal_sar_wt_message_2(Parcel::new(sar_msg2_items))
-                        .unwrap();
+                        .or_err()?;
 
                     // Produce pong → all peers.
-                    let pong_parcel = self.wt.produce_withdrawal_wt_niso_message_3().unwrap();
+                    let pong_parcel = self.wt.produce_withdrawal_wt_niso_message_3().or_err()?;
                     for item in pong_parcel.open() {
                         let (wt_peer_id, msg) = item.into_parts();
                         let idx = wt_peer_id_to_channel[&wt_peer_id];
                         self.peer_txs[idx]
                             .send(WtToPeerEnvelope::WithdrawalWtNisoMessage3(msg))
                             .await
-                            .unwrap();
+                            .or_err()?;
                     }
                     debug!("WtActor: sent pong to all peers.");
 
                     // Collect ping from all peers.
                     let mut niso_msg4_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
                     for idx in 0..num_peers {
-                        match self.peer_rxs[idx].recv().await.unwrap() {
+                        match self.peer_rxs[idx].recv().await.or_err()? {
                             PeerToWtEnvelope::WithdrawalNisoWtMessage4 { wt_peer_id, msg } => {
                                 niso_msg4_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                             }
                             _ => {
-                                panic!("WtActor: expected WithdrawalNisoWtMessage4 from peer {idx}")
+                                return unexpected(format!(
+                                    "WtActor: expected WithdrawalNisoWtMessage4 from peer {idx}"
+                                ));
                             }
                         }
                     }
                     self.wt
                         .consume_withdrawal_niso_wt_message_4(Parcel::new(niso_msg4_items))
-                        .unwrap();
+                        .or_err()?;
                     debug!("WtActor: ping-pong iteration done.");
                     ping_pong_round += 1;
                 }
@@ -490,7 +532,7 @@ impl WtActor {
                         self.peer_txs[idx]
                             .send(WtToPeerEnvelope::WithdrawalWtNisoMessage4(msg))
                             .await
-                            .unwrap();
+                            .or_err()?;
                     }
                     debug!("WtActor: sent final reached-pings message to all peers.");
                     break;
@@ -501,17 +543,22 @@ impl WtActor {
         // Collect WithdrawalNisoWtMessage5 (signed PSBTs) from all peers.
         let mut niso_msg5_items: Vec<MetadataAttachedMessage<WtPeerId, _>> = Vec::new();
         for idx in 0..num_peers {
-            match self.peer_rxs[idx].recv().await.unwrap() {
+            match self.peer_rxs[idx].recv().await.or_err()? {
                 PeerToWtEnvelope::WithdrawalNisoWtMessage5 { wt_peer_id, msg } => {
                     niso_msg5_items.push(MetadataAttachedMessage::new(wt_peer_id, msg));
                 }
-                _ => panic!("WtActor: expected WithdrawalNisoWtMessage5 from peer {idx}"),
+                _ => {
+                    return unexpected(format!(
+                        "WtActor: expected WithdrawalNisoWtMessage5 from peer {idx}"
+                    ));
+                }
             }
         }
         self.wt
             .consume_withdrawal_niso_wt_message_5(Parcel::new(niso_msg5_items))
-            .unwrap();
+            .or_err()?;
 
         info!("WtActor: withdrawal complete. Signed tx broadcasted.");
+        Ok(())
     }
 }

@@ -1,6 +1,8 @@
-use std::{any::Any, marker::PhantomData};
+use std::{any::Any, io, marker::PhantomData};
 
 use tokio::sync::{mpsc, oneshot};
+
+use crate::error_ext::NetworkedResult;
 
 type EntityResult = Box<dyn Any + Send>;
 type EntityCommandFn<E> = Box<dyn FnOnce(&mut E) -> EntityResult + Send + 'static>;
@@ -30,10 +32,10 @@ impl<E> EntityHandle<E>
 where
     E: Send + 'static,
 {
-    pub async fn call<R, F>(&self, operation: F) -> R
+    pub async fn call<R, F>(&self, operation: F) -> NetworkedResult<R>
     where
         R: Send + 'static,
-        F: FnOnce(&mut E) -> R + Send + 'static,
+        F: FnOnce(&mut E) -> NetworkedResult<R> + Send + 'static,
     {
         let (response_tx, response_rx) = oneshot::channel();
         self.tx
@@ -42,14 +44,19 @@ where
                 response_tx,
             })
             .await
-            .unwrap_or_else(|_| panic!("{} entity channel closed", self.entity_name));
+            .map_err(|_| io::Error::other(format!("{} entity channel closed", self.entity_name)))?;
 
-        let result = response_rx
-            .await
-            .unwrap_or_else(|_| panic!("{} entity task dropped response", self.entity_name));
+        let result = response_rx.await.map_err(|_| {
+            io::Error::other(format!("{} entity task dropped response", self.entity_name))
+        })?;
+        let result = result.downcast::<NetworkedResult<R>>().map_err(|_| {
+            io::Error::other(format!(
+                "{} entity response type mismatch",
+                self.entity_name
+            ))
+        })?;
+
         *result
-            .downcast::<R>()
-            .unwrap_or_else(|_| panic!("{} entity response type mismatch", self.entity_name))
     }
 }
 

@@ -12,6 +12,8 @@ use protocol::messages::{BranchingMessage2, MetadataAttachedMessage, Parcel};
 use tokio::time::{Duration, sleep};
 use tracing::debug;
 
+use crate::result_ext::OrErr;
+
 pub async fn run(
     boomerang_entities: BoomerangEntities,
     boomerang_config: &BoomerangNetworkConfig,
@@ -87,22 +89,22 @@ pub async fn run(
     let bitcoin_node_rpc_address = bitcoin_node.params.rpc_socket;
     let bitcoin_node_cookie_path = bitcoin_node.params.cookie_file.clone();
 
-    let wt_peer_1_id = peer_1_niso.get_wt_peer_id().unwrap();
-    let wt_peer_2_id = peer_2_niso.get_wt_peer_id().unwrap();
-    let wt_peer_3_id = peer_3_niso.get_wt_peer_id().unwrap();
-    let wt_peer_4_id = peer_4_niso.get_wt_peer_id().unwrap();
-    let wt_peer_5_id = peer_5_niso.get_wt_peer_id().unwrap();
+    let wt_peer_1_id = peer_1_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_2_id = peer_2_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_3_id = peer_3_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_4_id = peer_4_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_5_id = peer_5_niso.get_wt_peer_id().or_err()?;
 
-    let peer_1_sar_1_id = peer_1_sar_1.get_sar_id().unwrap();
-    let peer_1_sar_2_id = peer_1_sar_2.get_sar_id().unwrap();
-    let peer_2_sar_1_id = peer_2_sar_1.get_sar_id().unwrap();
-    let peer_2_sar_2_id = peer_2_sar_2.get_sar_id().unwrap();
-    let peer_3_sar_1_id = peer_3_sar_1.get_sar_id().unwrap();
-    let peer_3_sar_2_id = peer_3_sar_2.get_sar_id().unwrap();
-    let peer_4_sar_1_id = peer_4_sar_1.get_sar_id().unwrap();
-    let peer_4_sar_2_id = peer_4_sar_2.get_sar_id().unwrap();
-    let peer_5_sar_1_id = peer_5_sar_1.get_sar_id().unwrap();
-    let peer_5_sar_2_id = peer_5_sar_2.get_sar_id().unwrap();
+    let peer_1_sar_1_id = peer_1_sar_1.get_sar_id().or_err()?;
+    let peer_1_sar_2_id = peer_1_sar_2.get_sar_id().or_err()?;
+    let peer_2_sar_1_id = peer_2_sar_1.get_sar_id().or_err()?;
+    let peer_2_sar_2_id = peer_2_sar_2.get_sar_id().or_err()?;
+    let peer_3_sar_1_id = peer_3_sar_1.get_sar_id().or_err()?;
+    let peer_3_sar_2_id = peer_3_sar_2.get_sar_id().or_err()?;
+    let peer_4_sar_1_id = peer_4_sar_1.get_sar_id().or_err()?;
+    let peer_4_sar_2_id = peer_4_sar_2.get_sar_id().or_err()?;
+    let peer_5_sar_1_id = peer_5_sar_1.get_sar_id().or_err()?;
+    let peer_5_sar_2_id = peer_5_sar_2.get_sar_id().or_err()?;
 
     debug!("Withdrawal started.");
     // Depositing to boomerang address.
@@ -110,39 +112,42 @@ pub async fn run(
         &bitcoin_node_rpc_address.to_string(),
         Auth::CookieFile(bitcoin_node_cookie_path.clone()),
     )
-    .unwrap();
+    .or_err()?;
     let mining_address = miner
         .get_new_address(Some("mining"), Some(AddressType::Bech32))
-        .unwrap()
+        .or_err()?
         .require_network(Network::Regtest)
-        .unwrap();
+        .or_err()?;
     miner
         .generate_to_address(initial_miner_num_blocks_to_mine, &mining_address)
-        .unwrap();
+        .or_err()?;
     let task_miner = Client::new(
         &bitcoin_node_rpc_address.to_string(),
         Auth::CookieFile(bitcoin_node_cookie_path.clone()),
     )
-    .unwrap();
+    .or_err()?;
     let task_mining_address = mining_address.clone();
-    let miner_task_handle = tokio::spawn(async move {
-        loop {
-            sleep(Duration::from_millis(
-                miner_task_sleeping_time_in_milliseconds,
-            ))
-            .await;
-            task_miner
-                .generate_to_address(1, &task_mining_address)
-                .unwrap();
-        }
-    });
+    let miner_task_handle: tokio::task::JoinHandle<Result<(), std::io::Error>> =
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_millis(
+                    miner_task_sleeping_time_in_milliseconds,
+                ))
+                .await;
+                if let Err(err) = task_miner.generate_to_address(1, &task_mining_address) {
+                    return Err(std::io::Error::other(format!(
+                        "legacy PoC miner task failed to mine a block: {err}"
+                    )));
+                }
+            }
+        });
     let secp = Secp256k1::new();
     let destination_keypair = Keypair::new(&secp, &mut thread_rng());
     let destination_pubkey = PublicKey::new(destination_keypair.public_key());
-    let destination_address = Address::p2wpkh(&destination_pubkey.try_into().unwrap(), network);
-    let boomerang_params = peer_1_niso.get_boomerang_params().unwrap();
+    let destination_address = Address::p2wpkh(&destination_pubkey.try_into().or_err()?, network);
+    let boomerang_params = peer_1_niso.get_boomerang_params().or_err()?;
     let descriptor =
-        Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()).unwrap();
+        Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()).or_err()?;
     let fund_address = descriptor.address(network);
     let fund_txid = miner
         .send_to_address(
@@ -155,30 +160,30 @@ pub async fn run(
             None,
             None,
         )
-        .unwrap();
+        .or_err()?;
     miner
         .generate_to_address(
             miner_num_blocks_to_mine_for_deposit_transaction_to_be_mined,
             &mining_address,
         )
-        .unwrap();
-    let get_transaction_result = miner.get_transaction(&fund_txid, None).unwrap();
+        .or_err()?;
+    let get_transaction_result = miner.get_transaction(&fund_txid, None).or_err()?;
     let (vout, _tx_out) = get_transaction_result
         .transaction()
-        .unwrap()
+        .or_err()?
         .output
         .iter()
         .enumerate()
         .find(|(_vout, tx_out)| tx_out.script_pubkey == fund_address.script_pubkey())
         .map(|(vout, tx_out)| (vout, tx_out.clone()))
-        .unwrap();
+        .or_err()?;
     debug!(
         "Confirmations: {}",
         get_transaction_result.info.confirmations
     );
 
     let current_block = loop {
-        let latest_block = miner.get_block_count().unwrap();
+        let latest_block = miner.get_block_count().or_err()?;
         if latest_block >= absolute_locktime_for_withdrawal_transaction {
             break latest_block;
         } else {
@@ -203,7 +208,7 @@ pub async fn run(
             absolute_locktime_for_withdrawal_transaction as u32,
             withdrawal_transaction_amount_in_f64_btc,
         )
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator peer produced WithdrawalNisoInput1 to share the withdrawal PSBT with their NISO."
     );
@@ -214,11 +219,11 @@ pub async fn run(
     debug!("Step 2 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_niso_input_1(peer_1_withdrawal_niso_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the withdrawal PSBT.");
     let peer_1_withdrawal_niso_boomlet_message_1 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     debug!("Initiator Niso produced WithdrawalNisoBoomletMessage1 to give PSBT to Boomlet.");
 
     ////////////////////////////////////////////
@@ -227,11 +232,11 @@ pub async fn run(
     debug!("Step 3 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_1(peer_1_withdrawal_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator Boomlet received the withdrawal PSBT.");
     let peer_1_withdrawal_boomlet_niso_message_1 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator Boomlet produced WithdrawalBoomletNisoMessage1 to give the peer verification request to NISO."
     );
@@ -242,10 +247,11 @@ pub async fn run(
     debug!("Step 4 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_1(peer_1_withdrawal_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the peer verification request.");
-    let peer_1_withdrawal_niso_st_message_1 =
-        peer_1_niso.produce_withdrawal_niso_st_message_1().unwrap();
+    let peer_1_withdrawal_niso_st_message_1 = peer_1_niso
+        .produce_withdrawal_niso_st_message_1()
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoStMessage1 to give the peer verification request to ST."
     );
@@ -256,9 +262,9 @@ pub async fn run(
     debug!("Step 5 (Initiator Diagram):");
     peer_1_st
         .consume_withdrawal_niso_st_message_1(peer_1_withdrawal_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator ST received the peer verification request.");
-    let peer_1_withdrawal_st_output_1 = peer_1_st.produce_withdrawal_st_output_1().unwrap();
+    let peer_1_withdrawal_st_output_1 = peer_1_st.produce_withdrawal_st_output_1().or_err()?;
     debug!(
         "Initiator ST produced WithdrawalStOutput1 to give the peer verification request to peer."
     );
@@ -269,9 +275,9 @@ pub async fn run(
     debug!("Step 6 (Initiator Diagram):");
     peer_1
         .consume_withdrawal_st_output_1(peer_1_withdrawal_st_output_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator peer received the peer verification request.");
-    let peer_1_withdrawal_st_input_1 = peer_1.produce_withdrawal_st_input_1().unwrap();
+    let peer_1_withdrawal_st_input_1 = peer_1.produce_withdrawal_st_input_1().or_err()?;
     debug!(
         "Initiator peer produced WithdrawalStInput1 to give peer's consent to transaction to ST."
     );
@@ -282,10 +288,10 @@ pub async fn run(
     debug!("Step 7 (Initiator Diagram):");
     peer_1_st
         .consume_withdrawal_st_input_1(peer_1_withdrawal_st_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator ST received peer's consent to transaction.");
     let peer_1_withdrawal_st_niso_message_1 =
-        peer_1_st.produce_withdrawal_st_niso_message_1().unwrap();
+        peer_1_st.produce_withdrawal_st_niso_message_1().or_err()?;
     debug!(
         "Initiator ST produced WithdrawalStNisoMessage1 to give peer's consent to transaction to NISO."
     );
@@ -296,11 +302,11 @@ pub async fn run(
     debug!("Step 8 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_st_niso_message_1(peer_1_withdrawal_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received peer's consent to transaction.");
     let peer_1_withdrawal_niso_boomlet_message_2 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoBoomletMessage2 to give peer's consent to transaction to Boomlet."
     );
@@ -311,11 +317,11 @@ pub async fn run(
     debug!("Step 9 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_2(peer_1_withdrawal_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator Boomlet received peer's consent to transaction.");
     let peer_1_withdrawal_boomlet_niso_message_2 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator Boomlet produced WithdrawalBoomletNisoMessage2 to give the tx approval to NISO."
     );
@@ -326,10 +332,11 @@ pub async fn run(
     debug!("Step 10 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_2(peer_1_withdrawal_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the tx approval.");
-    let peer_1_withdrawal_niso_wt_message_1 =
-        peer_1_niso.produce_withdrawal_niso_wt_message_1().unwrap();
+    let peer_1_withdrawal_niso_wt_message_1 = peer_1_niso
+        .produce_withdrawal_niso_wt_message_1()
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoWtMessage1 to give the tx approval to watchtower."
     );
@@ -343,11 +350,11 @@ pub async fn run(
             wt_peer_1_id.clone(),
             peer_1_withdrawal_niso_wt_message_1,
         ))
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received the tx approval.");
     let active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_1 = active_wt
         .produce_withdrawal_wt_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtNonInitiatorNisoMessage1 to give the encrypted withdrawal PSBT to non-initiator NISOs."
     );
@@ -359,56 +366,56 @@ pub async fn run(
     let peer_2_withdrawal_wt_non_initiator_niso_message_1 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_1
             .look_for_message(&wt_peer_2_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_3_withdrawal_wt_non_initiator_niso_message_1 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_1
             .look_for_message(&wt_peer_3_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_4_withdrawal_wt_non_initiator_niso_message_1 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_1
             .look_for_message(&wt_peer_4_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_5_withdrawal_wt_non_initiator_niso_message_1 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_1
             .look_for_message(&wt_peer_5_id)
-            .unwrap()
+            .or_err()?
             .clone();
     peer_2_niso
         .consume_withdrawal_wt_non_initiator_niso_message_1(
             peer_2_withdrawal_wt_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_wt_non_initiator_niso_message_1(
             peer_3_withdrawal_wt_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_wt_non_initiator_niso_message_1(
             peer_4_withdrawal_wt_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_wt_non_initiator_niso_message_1(
             peer_5_withdrawal_wt_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the encrypted withdrawal PSBT.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1 to give the encrypted withdrawal PSBT to Boomlets."
     );
@@ -421,35 +428,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received the encrypted withdrawal PSBT.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1 to give the decrypted withdrawal PSBT to NISOs."
     );
@@ -462,35 +469,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the decrypted withdrawal PSBT.");
     let peer_2_withdrawal_non_initiator_niso_output_1 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_output_1 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_output_1 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_output_1 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_output_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoOutput1 to give the withdrawal PSBT to peers."
     );
@@ -503,36 +510,36 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_output_1(
             peer_2_withdrawal_non_initiator_niso_output_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_withdrawal_non_initiator_niso_output_1(
             peer_3_withdrawal_non_initiator_niso_output_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_withdrawal_non_initiator_niso_output_1(
             peer_4_withdrawal_non_initiator_niso_output_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_withdrawal_non_initiator_niso_output_1(
             peer_5_withdrawal_non_initiator_niso_output_1,
         )
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received the withdrawal PSBT.");
     let peer_2_withdrawal_non_initiator_niso_input_1 = peer_2
         .produce_withdrawal_non_initiator_niso_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_input_1 = peer_3
         .produce_withdrawal_non_initiator_niso_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_input_1 = peer_4
         .produce_withdrawal_non_initiator_niso_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_input_1 = peer_5
         .produce_withdrawal_non_initiator_niso_input_1()
-        .unwrap();
+        .or_err()?;
 
     debug!(
         "Peers produced WithdrawalNonInitiatorNisoInput1 to give their agreement with the withdrawal PSBT to non-initiator NISOs."
@@ -544,29 +551,29 @@ pub async fn run(
     debug!("Step 16 (Non-Initiator Diagram):");
     peer_2_niso
         .consume_withdrawal_non_initiator_niso_input_1(peer_2_withdrawal_non_initiator_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_niso_input_1(peer_3_withdrawal_non_initiator_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_niso_input_1(peer_4_withdrawal_non_initiator_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_niso_input_1(peer_5_withdrawal_non_initiator_niso_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received peers' agreement with the withdrawal PSBT.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage2 to give the event block height Boomlets."
     );
@@ -579,35 +586,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received the event block height.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1 to give the peer verification request to NISOs."
     );
@@ -620,35 +627,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the peer verification request.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_st_message_1 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_st_message_1 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_st_message_1 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_st_message_1 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorStMessage1 to give the peer verification request to STs."
     );
@@ -661,35 +668,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_1(
             peer_2_withdrawal_non_initiator_niso_non_initiator_st_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_1(
             peer_3_withdrawal_non_initiator_niso_non_initiator_st_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_1(
             peer_4_withdrawal_non_initiator_niso_non_initiator_st_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_1(
             peer_5_withdrawal_non_initiator_niso_non_initiator_st_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator STs received the peer verification request.");
     let peer_2_withdrawal_non_initiator_st_output_1 = peer_2_st
         .produce_withdrawal_non_initiator_st_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_output_1 = peer_3_st
         .produce_withdrawal_non_initiator_st_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_output_1 = peer_4_st
         .produce_withdrawal_non_initiator_st_output_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_output_1 = peer_5_st
         .produce_withdrawal_non_initiator_st_output_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator STs produced WithdrawalNonInitiatorStOutput1 to give the peer verification request to peer."
     );
@@ -700,30 +707,30 @@ pub async fn run(
     debug!("Step 20 (Non-Initiator Diagram):");
     peer_2
         .consume_withdrawal_non_initiator_st_output_1(peer_2_withdrawal_non_initiator_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_withdrawal_non_initiator_st_output_1(peer_3_withdrawal_non_initiator_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_withdrawal_non_initiator_st_output_1(peer_4_withdrawal_non_initiator_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_withdrawal_non_initiator_st_output_1(peer_5_withdrawal_non_initiator_st_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Non-Initiator peers received the peer verification request.");
     let peer_2_withdrawal_non_initiator_st_input_1 = peer_2
         .produce_withdrawal_non_initiator_st_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_input_1 = peer_3
         .produce_withdrawal_non_initiator_st_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_input_1 = peer_4
         .produce_withdrawal_non_initiator_st_input_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_input_1 = peer_5
         .produce_withdrawal_non_initiator_st_input_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator peers produced WithdrawalNonInitiatorStInput1 to give peers' consent to transaction to STs."
     );
@@ -734,29 +741,29 @@ pub async fn run(
     debug!("Step 21 (Non-Initiator Diagram):");
     peer_2_st
         .consume_withdrawal_non_initiator_st_input_1(peer_2_withdrawal_non_initiator_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_withdrawal_non_initiator_st_input_1(peer_3_withdrawal_non_initiator_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_withdrawal_non_initiator_st_input_1(peer_4_withdrawal_non_initiator_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_withdrawal_non_initiator_st_input_1(peer_5_withdrawal_non_initiator_st_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator STs received peers' consent to transaction.");
     let peer_2_withdrawal_non_initiator_st_non_initiator_niso_message_1 = peer_2_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_non_initiator_niso_message_1 = peer_3_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_non_initiator_niso_message_1 = peer_4_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_non_initiator_niso_message_1 = peer_5_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator STs produced WithdrawalNonInitiatorStNonInitiatorNisoMessage1 to give peers' consent to transaction to NISOs."
     );
@@ -769,35 +776,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_1(
             peer_2_withdrawal_non_initiator_st_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_1(
             peer_3_withdrawal_non_initiator_st_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_1(
             peer_4_withdrawal_non_initiator_st_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_1(
             peer_5_withdrawal_non_initiator_st_non_initiator_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received peers' consent to transaction.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage3 to give peers' consent to transaction Boomlets."
     );
@@ -810,35 +817,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received peers' consent to transaction.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage3 to give the tx approval to NISOs."
     );
@@ -851,35 +858,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the tx approval.");
     let peer_2_withdrawal_non_initiator_niso_wt_message_1 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_wt_message_1 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_wt_message_1 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_wt_message_1 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_wt_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoWtMessage1 to give the tx approval to watchtower."
     );
@@ -912,10 +919,10 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_wt_message_1(
             active_wt_parcel_to_be_received_withdrawal_non_initiator_niso_wt_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received the non-initiator tx approvals.");
     let active_wt_withdrawal_wt_niso_message_1 =
-        active_wt.produce_withdrawal_wt_niso_message_1().unwrap();
+        active_wt.produce_withdrawal_wt_niso_message_1().or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtNisoMessage1 to give the tx approval of all peers to the initiator NISO."
     );
@@ -926,7 +933,7 @@ pub async fn run(
     debug!("Step 26 (Non-Initiator Diagram):");
     let active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_2 = active_wt
         .produce_withdrawal_wt_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Watchtower produced parcel of WithdrawalWtNonInitiatorNisoMessage2 to give the tx approval of all peers to the non-initiator NISOs."
     );
@@ -937,11 +944,11 @@ pub async fn run(
     debug!("Step 27 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_wt_niso_message_1(active_wt_withdrawal_wt_niso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the tx approval of all peers.");
     let peer_1_withdrawal_niso_boomlet_message_3 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoBoomletMessage3 to give the tx approval of all peers to Boomlet."
     );
@@ -953,47 +960,47 @@ pub async fn run(
         .consume_withdrawal_wt_non_initiator_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_2
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_wt_non_initiator_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_2
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_wt_non_initiator_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_2
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_wt_non_initiator_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_2
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the tx approval of all peers.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage4 to give all tx approvals Boomlets."
     );
@@ -1005,11 +1012,11 @@ pub async fn run(
     debug!("Step 28 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_3(peer_1_withdrawal_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator Boomlet received the tx approval of all peers.");
     let peer_1_withdrawal_boomlet_niso_message_3 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator Boomlet produced WithdrawalBoomletNisoMessage3 to give the duress check space with nonce to NISO."
     );
@@ -1023,35 +1030,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_4,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received all tx approvals.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage4 to give the duress check space with nonce to NISOs."
     );
@@ -1062,10 +1069,11 @@ pub async fn run(
     debug!("Step 29 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_3(peer_1_withdrawal_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the duress check space with nonce.");
-    let peer_1_withdrawal_niso_st_message_2 =
-        peer_1_niso.produce_withdrawal_niso_st_message_2().unwrap();
+    let peer_1_withdrawal_niso_st_message_2 = peer_1_niso
+        .produce_withdrawal_niso_st_message_2()
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoStMessage2 to give the duress check space with nonce to ST."
     );
@@ -1078,35 +1086,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the duress check space with nonce.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_st_message_2 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_st_message_2 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_st_message_2 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_st_message_2 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_st_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorStMessage2 to give the duress check space with nonce to STs."
     );
@@ -1117,9 +1125,9 @@ pub async fn run(
     debug!("Step 30 (Initiator Diagram):");
     peer_1_st
         .consume_withdrawal_niso_st_message_2(peer_1_withdrawal_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator ST received the duress check space with nonce.");
-    let peer_1_withdrawal_st_output_2 = peer_1_st.produce_withdrawal_st_output_2().unwrap();
+    let peer_1_withdrawal_st_output_2 = peer_1_st.produce_withdrawal_st_output_2().or_err()?;
     debug!(
         "Initiator ST produced WithdrawalStOutput2 to give the duress check space with nonce to peer."
     );
@@ -1131,35 +1139,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_2(
             peer_2_withdrawal_non_initiator_niso_non_initiator_st_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_2(
             peer_3_withdrawal_non_initiator_niso_non_initiator_st_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_2(
             peer_4_withdrawal_non_initiator_niso_non_initiator_st_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_withdrawal_non_initiator_niso_non_initiator_st_message_2(
             peer_5_withdrawal_non_initiator_niso_non_initiator_st_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator STs received the duress check space with nonce.");
     let peer_2_withdrawal_non_initiator_st_output_2 = peer_2_st
         .produce_withdrawal_non_initiator_st_output_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_output_2 = peer_3_st
         .produce_withdrawal_non_initiator_st_output_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_output_2 = peer_4_st
         .produce_withdrawal_non_initiator_st_output_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_output_2 = peer_5_st
         .produce_withdrawal_non_initiator_st_output_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator STs produced WithdrawalNonInitiatorStOutput2 to give the duress check space with nonce to peer."
     );
@@ -1170,9 +1178,9 @@ pub async fn run(
     debug!("Step 31 (Initiator Diagram):");
     peer_1
         .consume_withdrawal_st_output_2(peer_1_withdrawal_st_output_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator peer received the duress check space.");
-    let peer_1_withdrawal_st_input_2 = peer_1.produce_withdrawal_st_input_2().unwrap();
+    let peer_1_withdrawal_st_input_2 = peer_1.produce_withdrawal_st_input_2().or_err()?;
 
     debug!("Initiator peer produced WithdrawalStInput2 to give the duress signal index to ST.");
 
@@ -1182,29 +1190,29 @@ pub async fn run(
     debug!("Step 31n (Non-Initiator Diagram):");
     peer_2
         .consume_withdrawal_non_initiator_st_output_2(peer_2_withdrawal_non_initiator_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_withdrawal_non_initiator_st_output_2(peer_3_withdrawal_non_initiator_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_withdrawal_non_initiator_st_output_2(peer_4_withdrawal_non_initiator_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_withdrawal_non_initiator_st_output_2(peer_5_withdrawal_non_initiator_st_output_2)
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator peers received the duress check space.");
     let peer_2_withdrawal_non_initiator_st_input_2 = peer_2
         .produce_withdrawal_non_initiator_st_input_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_input_2 = peer_3
         .produce_withdrawal_non_initiator_st_input_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_input_2 = peer_4
         .produce_withdrawal_non_initiator_st_input_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_input_2 = peer_5
         .produce_withdrawal_non_initiator_st_input_2()
-        .unwrap();
+        .or_err()?;
 
     debug!(
         "Non-Initiator peers produced WithdrawalNonInitiatorStInput2 to give the duress signal index to STs."
@@ -1216,10 +1224,10 @@ pub async fn run(
     debug!("Step 32 (Initiator Diagram):");
     peer_1_st
         .consume_withdrawal_st_input_2(peer_1_withdrawal_st_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator ST received the duress signal index with nonce.");
     let peer_1_withdrawal_st_niso_message_2 =
-        peer_1_st.produce_withdrawal_st_niso_message_2().unwrap();
+        peer_1_st.produce_withdrawal_st_niso_message_2().or_err()?;
     debug!(
         "Initiator ST produced WithdrawalStNisoMessage2 to give the duress signal index with nonce to NISO."
     );
@@ -1229,29 +1237,29 @@ pub async fn run(
     debug!("Step 32n (Non-Initiator Diagram):");
     peer_2_st
         .consume_withdrawal_non_initiator_st_input_2(peer_2_withdrawal_non_initiator_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_withdrawal_non_initiator_st_input_2(peer_3_withdrawal_non_initiator_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_withdrawal_non_initiator_st_input_2(peer_4_withdrawal_non_initiator_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_withdrawal_non_initiator_st_input_2(peer_5_withdrawal_non_initiator_st_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator STs received the duress signal index with nonce.");
     let peer_2_withdrawal_non_initiator_st_non_initiator_niso_message_2 = peer_2_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_st_non_initiator_niso_message_2 = peer_3_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_st_non_initiator_niso_message_2 = peer_4_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_st_non_initiator_niso_message_2 = peer_5_st
         .produce_withdrawal_non_initiator_st_non_initiator_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator STs produced WithdrawalNonInitiatorStNonInitiatorNisoMessage2 to give the tx response to NISOs."
     );
@@ -1262,11 +1270,11 @@ pub async fn run(
     debug!("Step 33 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_st_niso_message_2(peer_1_withdrawal_st_niso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the duress signal index with nonce.");
     let peer_1_withdrawal_niso_boomlet_message_4 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator NISO produced WithdrawalNisoBoomletMessage4 to give the duress signal index with nonce to Boomlet."
     );
@@ -1279,35 +1287,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_2(
             peer_2_withdrawal_non_initiator_st_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_2(
             peer_3_withdrawal_non_initiator_st_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_2(
             peer_4_withdrawal_non_initiator_st_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_st_non_initiator_niso_message_2(
             peer_5_withdrawal_non_initiator_st_non_initiator_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the duress signal index with nonce.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage5 to give the duress signal index with nonce to Boomlets."
     );
@@ -1318,11 +1326,11 @@ pub async fn run(
     debug!("Step 34 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_4(peer_1_withdrawal_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator Boomlet received the duress signal index with nonce.");
     let peer_1_withdrawal_boomlet_niso_message_4 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Initiator Boomlet produced WithdrawalBoomletNisoMessage4 to give the tx commit to NISO."
     );
@@ -1335,35 +1343,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_5,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received the duress signal index with nonce.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage5 to give Boomlets' acknowledgement of all tx approvals to NISOs."
     );
@@ -1374,10 +1382,11 @@ pub async fn run(
     debug!("Step 35 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_4(peer_1_withdrawal_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("Initiator NISO received the tx commit.");
-    let peer_1_withdrawal_niso_wt_message_2 =
-        peer_1_niso.produce_withdrawal_niso_wt_message_2().unwrap();
+    let peer_1_withdrawal_niso_wt_message_2 = peer_1_niso
+        .produce_withdrawal_niso_wt_message_2()
+        .or_err()?;
     debug!("Initiator NISO produced WithdrawalNisoWtMessage2 to give the tx commit to watchtower.");
 
     //////////////////////////////////////////////////
@@ -1388,35 +1397,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_5,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received Boomlets' acknowledgement of all tx approvals.");
     let peer_2_withdrawal_non_initiator_niso_wt_message_2 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_wt_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_wt_message_2 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_wt_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_wt_message_2 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_wt_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_wt_message_2 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_wt_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoWtMessage2 to give Boomlets' acknowledgement of all tx approvals to watchtower."
     );
@@ -1448,15 +1457,15 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_wt_message_2(
             active_wt_parcel_to_be_received_withdrawal_non_initiator_niso_wt_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received Boomlets' acknowledgement of all tx approvals.");
     active_wt
         .consume_withdrawal_niso_wt_message_2(peer_1_withdrawal_niso_wt_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received initiator's tx commit.");
 
     let active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_1 =
-        active_wt.produce_withdrawal_wt_sar_message_1().unwrap();
+        active_wt.produce_withdrawal_wt_sar_message_1().or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtSarMessage1 to give initiator's duress placeholder to SARs."
     );
@@ -1469,23 +1478,25 @@ pub async fn run(
         .consume_withdrawal_wt_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_1
                 .look_for_message(&peer_1_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_1_sar_2
         .consume_withdrawal_wt_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_1
                 .look_for_message(&peer_1_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("Initiator SARs received initiator's duress placeholder.");
-    let peer_1_sar_1_withdrawal_sar_wt_message_1 =
-        peer_1_sar_1.produce_withdrawal_sar_wt_message_1().unwrap();
-    let peer_1_sar_2_withdrawal_sar_wt_message_1 =
-        peer_1_sar_2.produce_withdrawal_sar_wt_message_1().unwrap();
+    let peer_1_sar_1_withdrawal_sar_wt_message_1 = peer_1_sar_1
+        .produce_withdrawal_sar_wt_message_1()
+        .or_err()?;
+    let peer_1_sar_2_withdrawal_sar_wt_message_1 = peer_1_sar_2
+        .produce_withdrawal_sar_wt_message_1()
+        .or_err()?;
     debug!(
         "Initiator SARs produced WithdrawalSarWtMessage1 to give their signature on initiator's duress placeholder to watchtower."
     );
@@ -1508,12 +1519,12 @@ pub async fn run(
         .consume_withdrawal_sar_wt_message_1(
             active_wt_parcel_to_be_received_withdrawal_sar_wt_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received initiator SARs' signature on initiator's duress placeholder.");
 
     let active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_3 = active_wt
         .produce_withdrawal_wt_non_initiator_niso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtNonInitiatorNisoMessage2 to give the initiator tx commit non-initiator NISOs."
     );
@@ -1525,56 +1536,56 @@ pub async fn run(
     let peer_2_withdrawal_wt_non_initiator_niso_message_3 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_3
             .look_for_message(&wt_peer_2_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_3_withdrawal_wt_non_initiator_niso_message_3 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_3
             .look_for_message(&wt_peer_3_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_4_withdrawal_wt_non_initiator_niso_message_3 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_3
             .look_for_message(&wt_peer_4_id)
-            .unwrap()
+            .or_err()?
             .clone();
     let peer_5_withdrawal_wt_non_initiator_niso_message_3 =
         active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_niso_message_3
             .look_for_message(&wt_peer_5_id)
-            .unwrap()
+            .or_err()?
             .clone();
     peer_2_niso
         .consume_withdrawal_wt_non_initiator_niso_message_3(
             peer_2_withdrawal_wt_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_wt_non_initiator_niso_message_3(
             peer_3_withdrawal_wt_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_wt_non_initiator_niso_message_3(
             peer_4_withdrawal_wt_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_wt_non_initiator_niso_message_3(
             peer_5_withdrawal_wt_non_initiator_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the initiator tx commit.");
     let peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoNonInitiatorBoomletMessage6 to give the initiator tx commit to Boomlets."
     );
@@ -1587,35 +1598,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6(
             peer_2_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6(
             peer_3_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6(
             peer_4_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6(
             peer_5_withdrawal_non_initiator_niso_non_initiator_boomlet_message_6,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator Boomlets received the initiator tx commit.");
     let peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6 = peer_2_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6 = peer_3_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6 = peer_4_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6 = peer_5_boomlet
         .produce_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator Boomlets produced WithdrawalNonInitiatorBoomletNonInitiatorNisoMessage6 to give the tx commit to NISOs."
     );
@@ -1627,35 +1638,35 @@ pub async fn run(
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6(
             peer_2_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6(
             peer_3_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6(
             peer_4_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6(
             peer_5_withdrawal_non_initiator_boomlet_non_initiator_niso_message_6,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator NISOs received the tx commit.");
     let peer_2_withdrawal_non_initiator_niso_wt_message_3 = peer_2_niso
         .produce_withdrawal_non_initiator_niso_wt_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_non_initiator_niso_wt_message_3 = peer_3_niso
         .produce_withdrawal_non_initiator_niso_wt_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_non_initiator_niso_wt_message_3 = peer_4_niso
         .produce_withdrawal_non_initiator_niso_wt_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_non_initiator_niso_wt_message_3 = peer_5_niso
         .produce_withdrawal_non_initiator_niso_wt_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator NISOs produced WithdrawalNonInitiatorNisoWtMessage3 to give the tx commit to watchtower."
     );
@@ -1687,11 +1698,11 @@ pub async fn run(
         .consume_withdrawal_non_initiator_niso_wt_message_3(
             active_wt_parcel_to_be_received_withdrawal_non_initiator_niso_wt_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received the non-initiator tx commits.");
     let active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1 = active_wt
         .produce_withdrawal_wt_non_initiator_sar_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtNonInitiatorSarMessage1 to give non-initiators' duress placeholder to SARs."
     );
@@ -1703,91 +1714,91 @@ pub async fn run(
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_2_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_2
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_2_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_1
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_3_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_2
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_3_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_1
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_4_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_2
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_4_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_1
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_5_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_2
         .consume_withdrawal_wt_non_initiator_sar_message_1(
             active_wt_parcel_to_be_sent_withdrawal_wt_non_initiator_sar_message_1
                 .look_for_message(&peer_5_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("Non-Initiator SARs received non-initiators' duress placeholder.");
     let peer_2_sar_1_withdrawal_non_initiator_sar_wt_message_1 = peer_2_sar_1
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_sar_2_withdrawal_non_initiator_sar_wt_message_1 = peer_2_sar_2
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_sar_1_withdrawal_non_initiator_sar_wt_message_1 = peer_3_sar_1
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_sar_2_withdrawal_non_initiator_sar_wt_message_1 = peer_3_sar_2
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_sar_1_withdrawal_non_initiator_sar_wt_message_1 = peer_4_sar_1
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_sar_2_withdrawal_non_initiator_sar_wt_message_1 = peer_4_sar_2
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_sar_1_withdrawal_non_initiator_sar_wt_message_1 = peer_5_sar_1
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_sar_2_withdrawal_non_initiator_sar_wt_message_1 = peer_5_sar_2
         .produce_withdrawal_non_initiator_sar_wt_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Non-Initiator SARs produced WithdrawalNonInitiatorSarWtMessage1 to give their signature on non-initiators' duress placeholder to watchtower."
     );
@@ -1834,10 +1845,10 @@ pub async fn run(
         .consume_withdrawal_non_initiator_sar_wt_message_1(
             active_wt_parcel_to_be_received_withdrawal_non_initiator_sar_wt_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received SARs' signature on non-initiators' duress placeholder.");
     let active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2 =
-        active_wt.produce_withdrawal_wt_niso_message_2().unwrap();
+        active_wt.produce_withdrawal_wt_niso_message_2().or_err()?;
     debug!(
         "Watchtower produced WithdrawalWtNisoMessage2 to give the tx commit of all peers and their own signed duress placeholders to NISOs."
     );
@@ -1850,58 +1861,58 @@ pub async fn run(
         .consume_withdrawal_wt_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2
                 .look_for_message(&wt_peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_wt_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_wt_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_wt_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_wt_niso_message_2(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_2
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received the tx commit of all peers and their own signed duress placeholders.");
     let peer_1_withdrawal_niso_boomlet_message_5 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_niso_boomlet_message_5 = peer_2_niso
         .produce_withdrawal_niso_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_niso_boomlet_message_5 = peer_3_niso
         .produce_withdrawal_niso_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_niso_boomlet_message_5 = peer_4_niso
         .produce_withdrawal_niso_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_niso_boomlet_message_5 = peer_5_niso
         .produce_withdrawal_niso_boomlet_message_5()
-        .unwrap();
+        .or_err()?;
     debug!(
         "NISOs produced WithdrawalNisoBoomletMessage5 to give the tx commit of all peers and their own signed duress placeholders to Boomlets."
     );
@@ -1912,37 +1923,37 @@ pub async fn run(
     debug!("Step 46 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_5(peer_1_withdrawal_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_withdrawal_niso_boomlet_message_5(peer_2_withdrawal_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_niso_boomlet_message_5(peer_3_withdrawal_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_niso_boomlet_message_5(peer_4_withdrawal_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_niso_boomlet_message_5(peer_5_withdrawal_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets received the tx commit of all peers and their own signed duress placeholders."
     );
     let peer_1_withdrawal_boomlet_niso_message_5 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_boomlet_niso_message_5 = peer_2_boomlet
         .produce_withdrawal_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_boomlet_niso_message_5 = peer_3_boomlet
         .produce_withdrawal_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_boomlet_niso_message_5 = peer_4_boomlet
         .produce_withdrawal_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_boomlet_niso_message_5 = peer_5_boomlet
         .produce_withdrawal_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced WithdrawalBoomletNisoMessage5 to give the ping to NISOs.");
 
     /////////////////////////////////////////////////
@@ -1951,30 +1962,35 @@ pub async fn run(
     debug!("Step 47 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_5(peer_1_withdrawal_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_boomlet_niso_message_5(peer_2_withdrawal_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_boomlet_niso_message_5(peer_3_withdrawal_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_boomlet_niso_message_5(peer_4_withdrawal_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_boomlet_niso_message_5(peer_5_withdrawal_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received the ping.");
-    let peer_1_withdrawal_niso_wt_message_3 =
-        peer_1_niso.produce_withdrawal_niso_wt_message_3().unwrap();
-    let peer_2_withdrawal_niso_wt_message_3 =
-        peer_2_niso.produce_withdrawal_niso_wt_message_3().unwrap();
-    let peer_3_withdrawal_niso_wt_message_3 =
-        peer_3_niso.produce_withdrawal_niso_wt_message_3().unwrap();
-    let peer_4_withdrawal_niso_wt_message_3 =
-        peer_4_niso.produce_withdrawal_niso_wt_message_3().unwrap();
-    let peer_5_withdrawal_niso_wt_message_3 =
-        peer_5_niso.produce_withdrawal_niso_wt_message_3().unwrap();
+    let peer_1_withdrawal_niso_wt_message_3 = peer_1_niso
+        .produce_withdrawal_niso_wt_message_3()
+        .or_err()?;
+    let peer_2_withdrawal_niso_wt_message_3 = peer_2_niso
+        .produce_withdrawal_niso_wt_message_3()
+        .or_err()?;
+    let peer_3_withdrawal_niso_wt_message_3 = peer_3_niso
+        .produce_withdrawal_niso_wt_message_3()
+        .or_err()?;
+    let peer_4_withdrawal_niso_wt_message_3 = peer_4_niso
+        .produce_withdrawal_niso_wt_message_3()
+        .or_err()?;
+    let peer_5_withdrawal_niso_wt_message_3 = peer_5_niso
+        .produce_withdrawal_niso_wt_message_3()
+        .or_err()?;
     debug!("NISOs produced WithdrawalNisoWtMessage3 to give the ping to watchtower.");
 
     /////////////////////////////////////////////////
@@ -1993,21 +2009,23 @@ pub async fn run(
         .consume_withdrawal_niso_wt_message_3(
             active_wt_parcel_to_be_received_withdrawal_non_initiator_sar_wt_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("Watchtower received the pings.");
     let mut active_wt_withdrawal_wt_sar_message_2_or_withdrawal_wt_niso_message_4 = active_wt
         .produce_withdrawal_wt_sar_message_2_or_produce_withdrawal_wt_niso_message_4()
-        .unwrap();
+        .or_err()?;
 
     let current_block = miner.get_block_count();
     println!(
         "Ping pong started at block:                 {}",
-        current_block.unwrap()
+        current_block.or_err()?
     );
     let mut ping_pong_loop_counter = 1;
     while let BranchingMessage2::First(active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2) =
         active_wt_withdrawal_wt_sar_message_2_or_withdrawal_wt_niso_message_4
     {
+        let active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2: Parcel<_, _> =
+            active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2;
         debug!(
             "Watchtower produced WithdrawalWtSarMessage2 to give the ping pong duress placeholders to SARs."
         );
@@ -2020,103 +2038,113 @@ pub async fn run(
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_1_sar_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_1_sar_2
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_1_sar_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_2_sar_1
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_2_sar_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_2_sar_2
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_2_sar_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_3_sar_1
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_3_sar_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_3_sar_2
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_3_sar_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_4_sar_1
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_4_sar_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_4_sar_2
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_4_sar_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_5_sar_1
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_5_sar_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_5_sar_2
             .consume_withdrawal_wt_sar_message_2(
                 active_wt_parcel_to_be_sent_withdrawal_wt_sar_message_2
                     .look_for_message(&peer_5_sar_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         debug!("SARs received the ping pong duress placeholders.");
-        let peer_1_sar_1_withdrawal_sar_wt_message_2 =
-            peer_1_sar_1.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_1_sar_2_withdrawal_sar_wt_message_2 =
-            peer_1_sar_2.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_2_sar_1_withdrawal_sar_wt_message_2 =
-            peer_2_sar_1.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_2_sar_2_withdrawal_sar_wt_message_2 =
-            peer_2_sar_2.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_3_sar_1_withdrawal_sar_wt_message_2 =
-            peer_3_sar_1.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_3_sar_2_withdrawal_sar_wt_message_2 =
-            peer_3_sar_2.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_4_sar_1_withdrawal_sar_wt_message_2 =
-            peer_4_sar_1.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_4_sar_2_withdrawal_sar_wt_message_2 =
-            peer_4_sar_2.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_5_sar_1_withdrawal_sar_wt_message_2 =
-            peer_5_sar_1.produce_withdrawal_sar_wt_message_2().unwrap();
-        let peer_5_sar_2_withdrawal_sar_wt_message_2 =
-            peer_5_sar_2.produce_withdrawal_sar_wt_message_2().unwrap();
+        let peer_1_sar_1_withdrawal_sar_wt_message_2 = peer_1_sar_1
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_1_sar_2_withdrawal_sar_wt_message_2 = peer_1_sar_2
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_2_sar_1_withdrawal_sar_wt_message_2 = peer_2_sar_1
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_2_sar_2_withdrawal_sar_wt_message_2 = peer_2_sar_2
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_3_sar_1_withdrawal_sar_wt_message_2 = peer_3_sar_1
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_3_sar_2_withdrawal_sar_wt_message_2 = peer_3_sar_2
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_4_sar_1_withdrawal_sar_wt_message_2 = peer_4_sar_1
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_4_sar_2_withdrawal_sar_wt_message_2 = peer_4_sar_2
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_5_sar_1_withdrawal_sar_wt_message_2 = peer_5_sar_1
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
+        let peer_5_sar_2_withdrawal_sar_wt_message_2 = peer_5_sar_2
+            .produce_withdrawal_sar_wt_message_2()
+            .or_err()?;
         debug!(
             "SARs produced WithdrawalSarWtMessage2 to give their signature on the ping pong duress placeholders to watchtower."
         );
@@ -2171,10 +2199,10 @@ pub async fn run(
             .consume_withdrawal_sar_wt_message_2(
                 active_wt_parcel_to_be_received_withdrawal_sar_wt_message_2,
             )
-            .unwrap();
+            .or_err()?;
         debug!("Watchtower received SARs' signature on the ping pong duress placeholders.");
         let active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3 =
-            active_wt.produce_withdrawal_wt_niso_message_3().unwrap();
+            active_wt.produce_withdrawal_wt_niso_message_3().or_err()?;
         debug!("Watchtower produced WithdrawalWtNisoMessage3 to give the pong to NISOs.");
 
         /////////////////////////////////////////////////
@@ -2185,58 +2213,58 @@ pub async fn run(
             .consume_withdrawal_wt_niso_message_3(
                 active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3
                     .look_for_message(&wt_peer_1_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_2_niso
             .consume_withdrawal_wt_niso_message_3(
                 active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3
                     .look_for_message(&wt_peer_2_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_3_niso
             .consume_withdrawal_wt_niso_message_3(
                 active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3
                     .look_for_message(&wt_peer_3_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_4_niso
             .consume_withdrawal_wt_niso_message_3(
                 active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3
                     .look_for_message(&wt_peer_4_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         peer_5_niso
             .consume_withdrawal_wt_niso_message_3(
                 active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_3
                     .look_for_message(&wt_peer_5_id)
-                    .unwrap()
+                    .or_err()?
                     .clone(),
             )
-            .unwrap();
+            .or_err()?;
         debug!("NISOs received the pong.");
         let peer_1_withdrawal_niso_boomlet_message_6 = peer_1_niso
             .produce_withdrawal_niso_boomlet_message_6()
-            .unwrap();
+            .or_err()?;
         let peer_2_withdrawal_niso_boomlet_message_6 = peer_2_niso
             .produce_withdrawal_niso_boomlet_message_6()
-            .unwrap();
+            .or_err()?;
         let peer_3_withdrawal_niso_boomlet_message_6 = peer_3_niso
             .produce_withdrawal_niso_boomlet_message_6()
-            .unwrap();
+            .or_err()?;
         let peer_4_withdrawal_niso_boomlet_message_6 = peer_4_niso
             .produce_withdrawal_niso_boomlet_message_6()
-            .unwrap();
+            .or_err()?;
         let peer_5_withdrawal_niso_boomlet_message_6 = peer_5_niso
             .produce_withdrawal_niso_boomlet_message_6()
-            .unwrap();
+            .or_err()?;
         debug!("NISOs produced WithdrawalNisoBoomletMessage6 to give the pong to Boomlets.");
 
         let entities = [
@@ -2288,14 +2316,14 @@ pub async fn run(
         ];
         let pings_collection = entities
             .into_iter()
-            .map(|(i, wt_peer_i_id, peer_i, peer_i_boomlet, peer_i_niso, peer_i_st, peer_i_withdrawal_niso_boomlet_message_6)| {
+            .map(|(i, wt_peer_i_id, peer_i, peer_i_boomlet, peer_i_niso, peer_i_st, peer_i_withdrawal_niso_boomlet_message_6)| -> Result<_, Box<dyn std::error::Error>> {
                 /////////////////////////////////////////////////
                 // Step 52 of Initiator     Withdrawal Diagram //
                 /////////////////////////////////////////////////
                 debug!("Step 52 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                peer_i_boomlet.consume_withdrawal_niso_boomlet_message_6(peer_i_withdrawal_niso_boomlet_message_6).unwrap();
+                peer_i_boomlet.consume_withdrawal_niso_boomlet_message_6(peer_i_withdrawal_niso_boomlet_message_6).or_err()?;
                 debug!("Boomlet {i} received the pong.");
-                let peer_i_boomlet_withdrawal_boomlet_niso_message_6_or_nothing = peer_i_boomlet.produce_withdrawal_boomlet_niso_message_6_or_produce_nothing().unwrap();
+                let peer_i_boomlet_withdrawal_boomlet_niso_message_6_or_nothing = peer_i_boomlet.produce_withdrawal_boomlet_niso_message_6_or_produce_nothing().or_err()?;
 
                 if let BranchingMessage2::First(peer_i_withdrawal_boomlet_niso_message_6) = peer_i_boomlet_withdrawal_boomlet_niso_message_6_or_nothing {
                     debug!("Boomlet {i} produced WithdrawalBoomletNisoMessage6 to give the duress check space with nonce to NISO {i}.");
@@ -2308,9 +2336,9 @@ pub async fn run(
                     /////////////////////////////////////////////////
                     debug!("Step 32 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
                     debug!("Step 53 (Non-Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i_niso.consume_withdrawal_boomlet_niso_message_6(peer_i_withdrawal_boomlet_niso_message_6).unwrap();
+                    peer_i_niso.consume_withdrawal_boomlet_niso_message_6(peer_i_withdrawal_boomlet_niso_message_6).or_err()?;
                     debug!("NISO {i} received the duress check space with nonce.");
-                    let peer_i_withdrawal_niso_st_message_3 = peer_i_niso.produce_withdrawal_niso_st_message_3().unwrap();
+                    let peer_i_withdrawal_niso_st_message_3 = peer_i_niso.produce_withdrawal_niso_st_message_3().or_err()?;
                     debug!("NISO {i} produced WithdrawalNisoStMessage3 to the duress check space with nonce to ST {i}.");
 
 
@@ -2320,9 +2348,9 @@ pub async fn run(
                     // Step 54 of Initiator     Withdrawal Diagram //
                     /////////////////////////////////////////////////
                     debug!("Step 54 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i_st.consume_withdrawal_niso_st_message_3(peer_i_withdrawal_niso_st_message_3).unwrap();
+                    peer_i_st.consume_withdrawal_niso_st_message_3(peer_i_withdrawal_niso_st_message_3).or_err()?;
                     debug!("ST {i} received the duress check space with nonce.");
-                    let peer_i_withdrawal_st_output_3 = peer_i_st.produce_withdrawal_st_output_3().unwrap();
+                    let peer_i_withdrawal_st_output_3 = peer_i_st.produce_withdrawal_st_output_3().or_err()?;
                     debug!("ST {i} produced WithdrawalStOutput3 to give the duress check space with nonce to peer {i}.");
 
 
@@ -2332,10 +2360,10 @@ pub async fn run(
                     // Step 55 of Initiator     Withdrawal Diagram //
                     /////////////////////////////////////////////////
                     debug!("Step 55 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i.consume_withdrawal_st_output_3(peer_i_withdrawal_st_output_3).unwrap();
+                    peer_i.consume_withdrawal_st_output_3(peer_i_withdrawal_st_output_3).or_err()?;
 
                     debug!("Peer {i} received the duress check space.");
-                    let peer_i_withdrawal_st_input_3 = peer_i.produce_withdrawal_st_input_3().unwrap();
+                    let peer_i_withdrawal_st_input_3 = peer_i.produce_withdrawal_st_input_3().or_err()?;
                     debug!("Peer {i} produced WithdrawalStInput3 to give the duress signal index to ST {i}.");
 
 
@@ -2345,9 +2373,9 @@ pub async fn run(
                     // Step 56 of Initiator     Withdrawal Diagram //
                     /////////////////////////////////////////////////
                     debug!("Step 56 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i_st.consume_withdrawal_st_input_3(peer_i_withdrawal_st_input_3).unwrap();
+                    peer_i_st.consume_withdrawal_st_input_3(peer_i_withdrawal_st_input_3).or_err()?;
                     debug!("ST {i} received the duress signal index with nonce.");
-                    let peer_i_withdrawal_st_niso_message_3 = peer_i_st.produce_withdrawal_st_niso_message_3().unwrap();
+                    let peer_i_withdrawal_st_niso_message_3 = peer_i_st.produce_withdrawal_st_niso_message_3().or_err()?;
                     debug!("ST {i} produced WithdrawalStNisoMessage3 to give the duress signal index with nonce to NISO {i}.");
 
 
@@ -2357,9 +2385,9 @@ pub async fn run(
                     // Step 57 of Initiator     Withdrawal Diagram //
                     /////////////////////////////////////////////////
                     debug!("Step 57 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i_niso.consume_withdrawal_st_niso_message_3(peer_i_withdrawal_st_niso_message_3).unwrap();
+                    peer_i_niso.consume_withdrawal_st_niso_message_3(peer_i_withdrawal_st_niso_message_3).or_err()?;
                     debug!("NISO {i} received the the duress signal index with nonce.");
-                    let peer_i_withdrawal_niso_boomlet_message_7 = peer_i_niso.produce_withdrawal_niso_boomlet_message_7().unwrap();
+                    let peer_i_withdrawal_niso_boomlet_message_7 = peer_i_niso.produce_withdrawal_niso_boomlet_message_7().or_err()?;
                     debug!("NISO {i} produced WithdrawalNisoBoomletMessage7 to give the duress signal index with nonce to Boomlet {i}.");
 
 
@@ -2369,11 +2397,11 @@ pub async fn run(
                     // Step 58 of Initiator     Withdrawal Diagram //
                     /////////////////////////////////////////////////
                     debug!("Step 58 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                    peer_i_boomlet.consume_withdrawal_niso_boomlet_message_7(peer_i_withdrawal_niso_boomlet_message_7).unwrap();
+                    peer_i_boomlet.consume_withdrawal_niso_boomlet_message_7(peer_i_withdrawal_niso_boomlet_message_7).or_err()?;
                     debug!("Boomlet {i} received the duress signal index with nonce.");
                 }
 
-                let peer_i_withdrawal_boomlet_niso_message_7 = peer_i_boomlet.produce_withdrawal_boomlet_niso_message_7().unwrap();
+                let peer_i_withdrawal_boomlet_niso_message_7 = peer_i_boomlet.produce_withdrawal_boomlet_niso_message_7().or_err()?;
                 debug!("Boomlet {i} produced WithdrawalBoomletNisoMessage7 to give the ping to NISO {i}.");
 
 
@@ -2383,14 +2411,14 @@ pub async fn run(
                 // Step 59 of Initiator     Withdrawal Diagram //
                 /////////////////////////////////////////////////
                 debug!("Step 59 (Initiator Diagram) - Iteration {ping_pong_loop_counter} - Peer {i}:");
-                peer_i_niso.consume_withdrawal_boomlet_niso_message_7(peer_i_withdrawal_boomlet_niso_message_7).unwrap();
+                peer_i_niso.consume_withdrawal_boomlet_niso_message_7(peer_i_withdrawal_boomlet_niso_message_7).or_err()?;
                 debug!("NISO {i} received the ping.");
-                let peer_i_withdrawal_niso_wt_message_4 = peer_i_niso.produce_withdrawal_niso_wt_message_4().unwrap();
+                let peer_i_withdrawal_niso_wt_message_4 = peer_i_niso.produce_withdrawal_niso_wt_message_4().or_err()?;
                 debug!("NISO {i} produced WithdrawalNisoWtMessage4 to give the ping to watchtower.");
 
-                (wt_peer_i_id, peer_i_withdrawal_niso_wt_message_4)
+                Ok((wt_peer_i_id, peer_i_withdrawal_niso_wt_message_4))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         /////////////////////////////////////////////////
         // Step 60 of Initiator     Withdrawal Diagram //
@@ -2398,12 +2426,12 @@ pub async fn run(
         debug!("Step 60 (Initiator Diagram) - Iteration {ping_pong_loop_counter}:");
         active_wt
             .consume_withdrawal_niso_wt_message_4(Parcel::from_batch(pings_collection))
-            .unwrap();
+            .or_err()?;
         debug!("Watchtower received the pings.");
 
         active_wt_withdrawal_wt_sar_message_2_or_withdrawal_wt_niso_message_4 = active_wt
             .produce_withdrawal_wt_sar_message_2_or_produce_withdrawal_wt_niso_message_4()
-            .unwrap();
+            .or_err()?;
         ping_pong_loop_counter += 1;
     }
     println!(
@@ -2415,10 +2443,10 @@ pub async fn run(
     let current_block = miner.get_block_count();
     println!(
         "All boomlets ready to sign at block:        {}",
-        current_block.unwrap()
+        current_block.or_err()?
     );
 
-    let active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4 =
+    let active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4: Parcel<_, _> =
         match active_wt_withdrawal_wt_sar_message_2_or_withdrawal_wt_niso_message_4 {
             BranchingMessage2::Second(message) => message,
             _ => unreachable!(
@@ -2435,58 +2463,58 @@ pub async fn run(
         .consume_withdrawal_wt_niso_message_4(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4
                 .look_for_message(&wt_peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_wt_niso_message_4(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_wt_niso_message_4(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_wt_niso_message_4(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_wt_niso_message_4(
             active_wt_parcel_to_be_sent_withdrawal_wt_niso_message_4
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received the reached acks.");
     let peer_1_withdrawal_niso_boomlet_message_8 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_niso_boomlet_message_8 = peer_2_niso
         .produce_withdrawal_niso_boomlet_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_niso_boomlet_message_8 = peer_3_niso
         .produce_withdrawal_niso_boomlet_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_niso_boomlet_message_8 = peer_4_niso
         .produce_withdrawal_niso_boomlet_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_niso_boomlet_message_8 = peer_5_niso
         .produce_withdrawal_niso_boomlet_message_8()
-        .unwrap();
+        .or_err()?;
     debug!("NISOs produced WithdrawalNisoBoomletMessage8 to give the reached pings to Boomlets.");
 
     /////////////////////////////////////////////////
@@ -2495,35 +2523,35 @@ pub async fn run(
     debug!("Step 62 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_8(peer_1_withdrawal_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_withdrawal_niso_boomlet_message_8(peer_2_withdrawal_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_niso_boomlet_message_8(peer_3_withdrawal_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_niso_boomlet_message_8(peer_4_withdrawal_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_niso_boomlet_message_8(peer_5_withdrawal_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received the reached pings.");
     let peer_1_withdrawal_boomlet_niso_message_8 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_boomlet_niso_message_8 = peer_2_boomlet
         .produce_withdrawal_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_boomlet_niso_message_8 = peer_3_boomlet
         .produce_withdrawal_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_boomlet_niso_message_8 = peer_4_boomlet
         .produce_withdrawal_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_boomlet_niso_message_8 = peer_5_boomlet
         .produce_withdrawal_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced WithdrawalBoomletNisoMessage8 to inform NISOs that they are ready to sign."
     );
@@ -2534,25 +2562,30 @@ pub async fn run(
     debug!("Step 63 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_8(peer_1_withdrawal_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_boomlet_niso_message_8(peer_2_withdrawal_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_boomlet_niso_message_8(peer_3_withdrawal_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_boomlet_niso_message_8(peer_4_withdrawal_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_boomlet_niso_message_8(peer_5_withdrawal_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs know that Boomlets are ready to sign.");
-    let peer_1_withdrawal_niso_output_1 = peer_1_niso.produce_withdrawal_niso_output_1().unwrap();
-    let peer_2_withdrawal_niso_output_1 = peer_2_niso.produce_withdrawal_niso_output_1().unwrap();
-    let peer_3_withdrawal_niso_output_1 = peer_3_niso.produce_withdrawal_niso_output_1().unwrap();
-    let peer_4_withdrawal_niso_output_1 = peer_4_niso.produce_withdrawal_niso_output_1().unwrap();
-    let peer_5_withdrawal_niso_output_1 = peer_5_niso.produce_withdrawal_niso_output_1().unwrap();
+    let peer_1_withdrawal_niso_output_1 =
+        peer_1_niso.produce_withdrawal_niso_output_1().or_err()?;
+    let peer_2_withdrawal_niso_output_1 =
+        peer_2_niso.produce_withdrawal_niso_output_1().or_err()?;
+    let peer_3_withdrawal_niso_output_1 =
+        peer_3_niso.produce_withdrawal_niso_output_1().or_err()?;
+    let peer_4_withdrawal_niso_output_1 =
+        peer_4_niso.produce_withdrawal_niso_output_1().or_err()?;
+    let peer_5_withdrawal_niso_output_1 =
+        peer_5_niso.produce_withdrawal_niso_output_1().or_err()?;
     debug!("NISOs produced WithdrawalNisoOutput1 to inform peers that Boomlets are ready to sign.");
 
     /////////////////////////////////////////////////
@@ -2561,27 +2594,27 @@ pub async fn run(
     debug!("Step 64 (Initiator Diagram):");
     peer_1
         .consume_withdrawal_niso_output_1(peer_1_withdrawal_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_withdrawal_niso_output_1(peer_2_withdrawal_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_withdrawal_niso_output_1(peer_3_withdrawal_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_withdrawal_niso_output_1(peer_4_withdrawal_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_withdrawal_niso_output_1(peer_5_withdrawal_niso_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers know that Boomlets are ready to sign.");
 
-    let peer_1_withdrawal_iso_input_1 = peer_1.produce_withdrawal_iso_input_1().unwrap();
-    let peer_2_withdrawal_iso_input_1 = peer_2.produce_withdrawal_iso_input_1().unwrap();
-    let peer_3_withdrawal_iso_input_1 = peer_3.produce_withdrawal_iso_input_1().unwrap();
-    let peer_4_withdrawal_iso_input_1 = peer_4.produce_withdrawal_iso_input_1().unwrap();
-    let peer_5_withdrawal_iso_input_1 = peer_5.produce_withdrawal_iso_input_1().unwrap();
+    let peer_1_withdrawal_iso_input_1 = peer_1.produce_withdrawal_iso_input_1().or_err()?;
+    let peer_2_withdrawal_iso_input_1 = peer_2.produce_withdrawal_iso_input_1().or_err()?;
+    let peer_3_withdrawal_iso_input_1 = peer_3.produce_withdrawal_iso_input_1().or_err()?;
+    let peer_4_withdrawal_iso_input_1 = peer_4.produce_withdrawal_iso_input_1().or_err()?;
+    let peer_5_withdrawal_iso_input_1 = peer_5.produce_withdrawal_iso_input_1().or_err()?;
 
     debug!("Peers produced WithdrawalIsoInput1 to give signing data to ISOs.");
 
@@ -2591,35 +2624,35 @@ pub async fn run(
     debug!("Step 65 (Initiator Diagram):");
     peer_1_iso
         .consume_withdrawal_iso_input_1(peer_1_withdrawal_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_withdrawal_iso_input_1(peer_2_withdrawal_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_withdrawal_iso_input_1(peer_3_withdrawal_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_withdrawal_iso_input_1(peer_4_withdrawal_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_withdrawal_iso_input_1(peer_5_withdrawal_iso_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received signing data.");
     let peer_1_withdrawal_iso_boomlet_message_1 = peer_1_iso
         .produce_withdrawal_iso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_iso_boomlet_message_1 = peer_2_iso
         .produce_withdrawal_iso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_iso_boomlet_message_1 = peer_3_iso
         .produce_withdrawal_iso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_iso_boomlet_message_1 = peer_4_iso
         .produce_withdrawal_iso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_iso_boomlet_message_1 = peer_5_iso
         .produce_withdrawal_iso_boomlet_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "ISOs produced WithdrawalIsoBoomletMessage1 to signal the start of musig2 signing procedure to Boomlets."
     );
@@ -2630,35 +2663,35 @@ pub async fn run(
     debug!("Step 66 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_iso_boomlet_message_1(peer_1_withdrawal_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_withdrawal_iso_boomlet_message_1(peer_2_withdrawal_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_iso_boomlet_message_1(peer_3_withdrawal_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_iso_boomlet_message_1(peer_4_withdrawal_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_iso_boomlet_message_1(peer_5_withdrawal_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets know about the start of musig2 signing procedure.");
     let peer_1_withdrawal_boomlet_iso_message_1 = peer_1_boomlet
         .produce_withdrawal_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_boomlet_iso_message_1 = peer_2_boomlet
         .produce_withdrawal_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_boomlet_iso_message_1 = peer_3_boomlet
         .produce_withdrawal_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_boomlet_iso_message_1 = peer_4_boomlet
         .produce_withdrawal_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_boomlet_iso_message_1 = peer_5_boomlet
         .produce_withdrawal_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced WithdrawalBoomletIsoMessage1 to required signing data to ISOs.");
 
     /////////////////////////////////////////////////
@@ -2667,35 +2700,35 @@ pub async fn run(
     debug!("Step 67 (Initiator Diagram):");
     peer_1_iso
         .consume_withdrawal_boomlet_iso_message_1(peer_1_withdrawal_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_withdrawal_boomlet_iso_message_1(peer_2_withdrawal_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_withdrawal_boomlet_iso_message_1(peer_3_withdrawal_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_withdrawal_boomlet_iso_message_1(peer_4_withdrawal_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_withdrawal_boomlet_iso_message_1(peer_5_withdrawal_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received required signing data.");
     let peer_1_withdrawal_iso_boomlet_message_2 = peer_1_iso
         .produce_withdrawal_iso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_iso_boomlet_message_2 = peer_2_iso
         .produce_withdrawal_iso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_iso_boomlet_message_2 = peer_3_iso
         .produce_withdrawal_iso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_iso_boomlet_message_2 = peer_4_iso
         .produce_withdrawal_iso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_iso_boomlet_message_2 = peer_5_iso
         .produce_withdrawal_iso_boomlet_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "ISOs produced WithdrawalIsoBoomletMessage2 to give their partial signatures on PSBT to Boomlets."
     );
@@ -2706,35 +2739,35 @@ pub async fn run(
     debug!("Step 68 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_iso_boomlet_message_2(peer_1_withdrawal_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_withdrawal_iso_boomlet_message_2(peer_2_withdrawal_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_iso_boomlet_message_2(peer_3_withdrawal_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_iso_boomlet_message_2(peer_4_withdrawal_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_iso_boomlet_message_2(peer_5_withdrawal_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received partial signatures of ISOs.");
     let peer_1_withdrawal_boomlet_iso_message_2 = peer_1_boomlet
         .produce_withdrawal_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_boomlet_iso_message_2 = peer_2_boomlet
         .produce_withdrawal_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_boomlet_iso_message_2 = peer_3_boomlet
         .produce_withdrawal_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_boomlet_iso_message_2 = peer_4_boomlet
         .produce_withdrawal_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_boomlet_iso_message_2 = peer_5_boomlet
         .produce_withdrawal_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced WithdrawalBoomletIsoMessage2 to give their partial signatures on PSBT to ISOs."
     );
@@ -2745,25 +2778,25 @@ pub async fn run(
     debug!("Step 69 (Initiator Diagram):");
     peer_1_iso
         .consume_withdrawal_boomlet_iso_message_2(peer_1_withdrawal_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_withdrawal_boomlet_iso_message_2(peer_2_withdrawal_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_withdrawal_boomlet_iso_message_2(peer_3_withdrawal_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_withdrawal_boomlet_iso_message_2(peer_4_withdrawal_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_withdrawal_boomlet_iso_message_2(peer_5_withdrawal_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received partial signatures of Boomlets.");
-    let peer_1_withdrawal_iso_output_1 = peer_1_iso.produce_withdrawal_iso_output_1().unwrap();
-    let peer_2_withdrawal_iso_output_1 = peer_2_iso.produce_withdrawal_iso_output_1().unwrap();
-    let peer_3_withdrawal_iso_output_1 = peer_3_iso.produce_withdrawal_iso_output_1().unwrap();
-    let peer_4_withdrawal_iso_output_1 = peer_4_iso.produce_withdrawal_iso_output_1().unwrap();
-    let peer_5_withdrawal_iso_output_1 = peer_5_iso.produce_withdrawal_iso_output_1().unwrap();
+    let peer_1_withdrawal_iso_output_1 = peer_1_iso.produce_withdrawal_iso_output_1().or_err()?;
+    let peer_2_withdrawal_iso_output_1 = peer_2_iso.produce_withdrawal_iso_output_1().or_err()?;
+    let peer_3_withdrawal_iso_output_1 = peer_3_iso.produce_withdrawal_iso_output_1().or_err()?;
+    let peer_4_withdrawal_iso_output_1 = peer_4_iso.produce_withdrawal_iso_output_1().or_err()?;
+    let peer_5_withdrawal_iso_output_1 = peer_5_iso.produce_withdrawal_iso_output_1().or_err()?;
     debug!("ISOs produced WithdrawalIsoOutput1 to inform peers that psbt signature is created.");
 
     /////////////////////////////////////////////////
@@ -2772,26 +2805,26 @@ pub async fn run(
     debug!("Step 70 (Initiator Diagram):");
     peer_1
         .consume_withdrawal_iso_output_1(peer_1_withdrawal_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_withdrawal_iso_output_1(peer_2_withdrawal_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_withdrawal_iso_output_1(peer_3_withdrawal_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_withdrawal_iso_output_1(peer_4_withdrawal_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_withdrawal_iso_output_1(peer_5_withdrawal_iso_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers know that psbt signature is created.");
-    let peer_1_withdrawal_niso_input_2 = peer_1.produce_withdrawal_niso_input_2().unwrap();
-    let peer_2_withdrawal_niso_input_2 = peer_2.produce_withdrawal_niso_input_2().unwrap();
-    let peer_3_withdrawal_niso_input_2 = peer_3.produce_withdrawal_niso_input_2().unwrap();
-    let peer_4_withdrawal_niso_input_2 = peer_4.produce_withdrawal_niso_input_2().unwrap();
-    let peer_5_withdrawal_niso_input_2 = peer_5.produce_withdrawal_niso_input_2().unwrap();
+    let peer_1_withdrawal_niso_input_2 = peer_1.produce_withdrawal_niso_input_2().or_err()?;
+    let peer_2_withdrawal_niso_input_2 = peer_2.produce_withdrawal_niso_input_2().or_err()?;
+    let peer_3_withdrawal_niso_input_2 = peer_3.produce_withdrawal_niso_input_2().or_err()?;
+    let peer_4_withdrawal_niso_input_2 = peer_4.produce_withdrawal_niso_input_2().or_err()?;
+    let peer_5_withdrawal_niso_input_2 = peer_5.produce_withdrawal_niso_input_2().or_err()?;
     debug!("Peers produced WithdrawalNisoInput2 to tell NISOs that psbt signature is created.");
 
     /////////////////////////////////////////////////
@@ -2800,35 +2833,35 @@ pub async fn run(
     debug!("Step 71 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_niso_input_2(peer_1_withdrawal_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_niso_input_2(peer_2_withdrawal_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_niso_input_2(peer_3_withdrawal_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_niso_input_2(peer_4_withdrawal_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_niso_input_2(peer_5_withdrawal_niso_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs know that psbt signature is created.");
     let peer_1_withdrawal_niso_boomlet_message_9 = peer_1_niso
         .produce_withdrawal_niso_boomlet_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_niso_boomlet_message_9 = peer_2_niso
         .produce_withdrawal_niso_boomlet_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_niso_boomlet_message_9 = peer_3_niso
         .produce_withdrawal_niso_boomlet_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_niso_boomlet_message_9 = peer_4_niso
         .produce_withdrawal_niso_boomlet_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_niso_boomlet_message_9 = peer_5_niso
         .produce_withdrawal_niso_boomlet_message_9()
-        .unwrap();
+        .or_err()?;
     debug!("ISOs produced WithdrawalIsoBoomletMessage9 to ask Boomlets for the signed PSBT.");
 
     /////////////////////////////////////////////////
@@ -2837,35 +2870,35 @@ pub async fn run(
     debug!("Step 72 (Initiator Diagram):");
     peer_1_boomlet
         .consume_withdrawal_niso_boomlet_message_9(peer_1_withdrawal_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_withdrawal_niso_boomlet_message_9(peer_2_withdrawal_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_withdrawal_niso_boomlet_message_9(peer_3_withdrawal_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_withdrawal_niso_boomlet_message_9(peer_4_withdrawal_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_withdrawal_niso_boomlet_message_9(peer_5_withdrawal_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received NISOs request for the signed PSBT.");
     let peer_1_withdrawal_boomlet_niso_message_9 = peer_1_boomlet
         .produce_withdrawal_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_2_withdrawal_boomlet_niso_message_9 = peer_2_boomlet
         .produce_withdrawal_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_3_withdrawal_boomlet_niso_message_9 = peer_3_boomlet
         .produce_withdrawal_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_4_withdrawal_boomlet_niso_message_9 = peer_4_boomlet
         .produce_withdrawal_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_5_withdrawal_boomlet_niso_message_9 = peer_5_boomlet
         .produce_withdrawal_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced WithdrawalBoomletNisoMessage9 to give the signed PSBT to NISOs.");
 
     /////////////////////////////////////////////////
@@ -2874,30 +2907,35 @@ pub async fn run(
     debug!("Step 73 (Initiator Diagram):");
     peer_1_niso
         .consume_withdrawal_boomlet_niso_message_9(peer_1_withdrawal_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_withdrawal_boomlet_niso_message_9(peer_2_withdrawal_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_withdrawal_boomlet_niso_message_9(peer_3_withdrawal_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_withdrawal_boomlet_niso_message_9(peer_4_withdrawal_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_withdrawal_boomlet_niso_message_9(peer_5_withdrawal_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received the signed PSBT.");
-    let peer_1_withdrawal_niso_wt_message_5 =
-        peer_1_niso.produce_withdrawal_niso_wt_message_5().unwrap();
-    let peer_2_withdrawal_niso_wt_message_5 =
-        peer_2_niso.produce_withdrawal_niso_wt_message_5().unwrap();
-    let peer_3_withdrawal_niso_wt_message_5 =
-        peer_3_niso.produce_withdrawal_niso_wt_message_5().unwrap();
-    let peer_4_withdrawal_niso_wt_message_5 =
-        peer_4_niso.produce_withdrawal_niso_wt_message_5().unwrap();
-    let peer_5_withdrawal_niso_wt_message_5 =
-        peer_5_niso.produce_withdrawal_niso_wt_message_5().unwrap();
+    let peer_1_withdrawal_niso_wt_message_5 = peer_1_niso
+        .produce_withdrawal_niso_wt_message_5()
+        .or_err()?;
+    let peer_2_withdrawal_niso_wt_message_5 = peer_2_niso
+        .produce_withdrawal_niso_wt_message_5()
+        .or_err()?;
+    let peer_3_withdrawal_niso_wt_message_5 = peer_3_niso
+        .produce_withdrawal_niso_wt_message_5()
+        .or_err()?;
+    let peer_4_withdrawal_niso_wt_message_5 = peer_4_niso
+        .produce_withdrawal_niso_wt_message_5()
+        .or_err()?;
+    let peer_5_withdrawal_niso_wt_message_5 = peer_5_niso
+        .produce_withdrawal_niso_wt_message_5()
+        .or_err()?;
     debug!("NISOs produced WithdrawalNisoWtMessage5 to give the signed PSBTs to watchtower.");
     let active_wt_parcel_to_be_received_withdrawal_niso_wt_message_5 = Parcel::new(vec![
         MetadataAttachedMessage::new(wt_peer_1_id.clone(), peer_1_withdrawal_niso_wt_message_5),
@@ -2910,7 +2948,7 @@ pub async fn run(
         .consume_withdrawal_niso_wt_message_5(
             active_wt_parcel_to_be_received_withdrawal_niso_wt_message_5,
         )
-        .unwrap();
+        .or_err()?;
     debug!(
         "Watchtower received the signed PSBTs, combined them, and broadcasted the final signed transaction."
     );
@@ -2918,7 +2956,7 @@ pub async fn run(
     let current_block = miner.get_block_count();
     println!(
         "Withdrawal finished successfully at block:  {}\n",
-        current_block.unwrap()
+        current_block.or_err()?
     );
     miner_task_handle.abort();
     Ok(())

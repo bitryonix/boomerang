@@ -105,14 +105,21 @@ impl Boomlet {
 
         // Do computation.
         // Check (1) if the current block announced by niso is greater than the milestone_block_0.
-        let milestone_block_0 = boomerang_params
-            .get_milestone_blocks_collection()
-            .first()
-            .expect("Assumed milestone blocks to be more than one.");
-        if absolute::Height::from_consensus(*milestone_block_0)
-            .expect("Assumed milestone blocks to be valid.")
-            > niso_event_block_height
-        {
+        let milestone_block_0 = traceable_unfold_or_error!(
+            boomerang_params
+                .get_milestone_blocks_collection()
+                .first()
+                .copied()
+                .ok_or(error::ConsumeWithdrawalNisoBoomletMessage1Error::InternalInvariant),
+            "Boomerang params must contain at least one milestone block.",
+        );
+        let milestone_block_0 = traceable_unfold_or_error!(
+            absolute::Height::from_consensus(milestone_block_0).map_err(|_err| {
+                error::ConsumeWithdrawalNisoBoomletMessage1Error::InternalInvariant
+            }),
+            "Boomerang milestone blocks must be valid consensus heights.",
+        );
+        if milestone_block_0 > niso_event_block_height {
             let err = error::ConsumeWithdrawalNisoBoomletMessage1Error::BoomerangEraHasNotStarted;
             error_log!(err, "Boomerang era has not started yet.");
             return Err(err);
@@ -454,14 +461,23 @@ impl Boomlet {
             "Watchtower's tx approval is incorrect.",
         );
         // Check (7) if the block reported by its own niso is higher than milestone block 0.
-        let milestone_block_0 = boomerang_params
-            .get_milestone_blocks_collection()
-            .first()
-            .expect("Assumed milestone blocks to be more than one.");
-        if absolute::Height::from_consensus(*milestone_block_0)
-            .expect("Assumed milestone blocks to be valid.")
-            > niso_event_block_height
-        {
+        let milestone_block_0 = traceable_unfold_or_error!(
+            boomerang_params
+                .get_milestone_blocks_collection()
+                .first()
+                .copied()
+                .ok_or(
+                    error::ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error::InternalInvariant,
+                ),
+            "Boomerang params must contain at least one milestone block.",
+        );
+        let milestone_block_0 = traceable_unfold_or_error!(
+            absolute::Height::from_consensus(milestone_block_0).map_err(|_err| {
+                error::ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error::InternalInvariant
+            }),
+            "Boomerang milestone blocks must be valid consensus heights.",
+        );
+        if milestone_block_0 > niso_event_block_height {
             let err = error::ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error::BoomerangEraHasNotStarted;
             error_log!(err, "Boomerang era has not started yet.");
             return Err(err);
@@ -2611,13 +2627,18 @@ impl Boomlet {
 
         // Do computation.ccc
         let mut rng = rand::rng();
-        let descriptor = traceable_unfold_or_panic!(
-            Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()),
-            "Assumed Boomerang descriptor to be valid."
+        let descriptor = traceable_unfold_or_error!(
+            Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()).map_err(
+                |_err| error::ConsumeWithdrawalIsoBoomletMessage1Error::InternalInvariant,
+            ),
+            "Boomlet must retain a valid Boomerang descriptor while preparing withdrawal signing.",
         );
-        let (_, boom_tapleaf_script) = traceable_unfold_or_panic!(
-            descriptor.iter_scripts().next().ok_or(()),
-            "Assumed Boomerang descriptor to have a Boom script spend path.",
+        let (_, boom_tapleaf_script) = traceable_unfold_or_error!(
+            descriptor
+                .iter_scripts()
+                .next()
+                .ok_or(error::ConsumeWithdrawalIsoBoomletMessage1Error::InternalInvariant),
+            "Boomlet must retain a Boom script spend path while preparing withdrawal signing.",
         );
         let withdrawal_key_agg_context = PublicKey::musig2_aggregate_to_key_agg_context(vec![
             *boomlet_boom_musig2_pubkey_share,
@@ -2631,7 +2652,7 @@ impl Boomlet {
             .inputs
             .iter()
             .enumerate()
-            .for_each(|(index, _input)| {
+            .try_for_each(|(index, _input)| {
                 let mut nonce_seed_bytes = [0u8; 32];
                 rng.fill_bytes(&mut nonce_seed_bytes);
                 let nonce_seed = NonceSeed::from(nonce_seed_bytes);
@@ -2657,12 +2678,15 @@ impl Boomlet {
                             LeafVersion::TapScript,
                         )),
                     )
-                    .unwrap();
+                    .map_err(|_err| {
+                        error::ConsumeWithdrawalIsoBoomletMessage1Error::InternalInvariant
+                    })?;
 
                 withdrawal_secret_nonces_collection.push(secret_nonce);
                 withdrawal_public_nonces_collection.push(public_nonce);
                 withdrawal_sighashes_collection.push(sighash);
-            });
+                Ok(())
+            })?;
 
         // Change State.
         self.state = State::Withdrawal_AfterWithdrawalIsoBoomletMessage1_WithdrawalSigningStarted;
@@ -2770,13 +2794,18 @@ impl Boomlet {
 
         // Do computation
         let mut withdrawal_psbt = withdrawal_psbt.clone();
-        let descriptor = traceable_unfold_or_panic!(
-            Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()),
-            "Assumed Boomerang descriptor to be valid."
+        let descriptor = traceable_unfold_or_error!(
+            Tr::<XOnlyPublicKey>::from_str(boomerang_params.get_boomerang_descriptor()).map_err(
+                |_err| error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant,
+            ),
+            "Boomlet must retain a valid Boomerang descriptor while completing withdrawal signing.",
         );
-        let (_, boom_tapleaf_script) = traceable_unfold_or_panic!(
-            descriptor.iter_scripts().next().ok_or(()),
-            "Assumed Boomerang descriptor to have a Boom script spend path.",
+        let (_, boom_tapleaf_script) = traceable_unfold_or_error!(
+            descriptor
+                .iter_scripts()
+                .next()
+                .ok_or(error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant),
+            "Boomlet must retain a Boom script spend path while completing withdrawal signing.",
         );
         if withdrawal_psbt.inputs.len() != iso_public_nonces_collection.len() {
             let err = error::ConsumeWithdrawalIsoBoomletMessage2Error::InvalidSignatureInputs;
@@ -2829,16 +2858,46 @@ impl Boomlet {
                     error_log!(err, "Failed to verify ISO's partial signature on PSBT input.");
                     return Err(err);
                 }
-                let partial_signature: PartialSignature = musig2::sign_partial(withdrawal_key_agg_context, <cryptography::PrivateKey as Into<musig2::secp256k1::SecretKey>>::into(*boomlet_boom_musig2_privkey_share), secret_nonce.clone(), &aggregated_nonce, sighash.to_secp_msg().as_ref()).unwrap();
-                let final_signature_musig2: musig2::secp256k1::schnorr::Signature = musig2::aggregate_partial_signatures(withdrawal_key_agg_context, &aggregated_nonce, vec![partial_signature, iso_partial_signature], sighash.to_secp_msg().as_ref()).unwrap();
-                let final_signature = bitcoin::secp256k1::schnorr::Signature::from_str(&final_signature_musig2.to_string()).unwrap();
+                let partial_signature: PartialSignature = musig2::sign_partial(
+                    withdrawal_key_agg_context,
+                    <cryptography::PrivateKey as Into<musig2::secp256k1::SecretKey>>::into(
+                        *boomlet_boom_musig2_privkey_share,
+                    ),
+                    secret_nonce.clone(),
+                    &aggregated_nonce,
+                    sighash.to_secp_msg().as_ref(),
+                )
+                .map_err(|_err| error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant)?;
+                let final_signature_musig2: musig2::secp256k1::schnorr::Signature =
+                    musig2::aggregate_partial_signatures(
+                        withdrawal_key_agg_context,
+                        &aggregated_nonce,
+                        vec![partial_signature, iso_partial_signature],
+                        sighash.to_secp_msg().as_ref(),
+                    )
+                    .map_err(|_err| {
+                        error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant
+                    })?;
+                let final_signature = bitcoin::secp256k1::schnorr::Signature::from_str(
+                    &final_signature_musig2.to_string(),
+                )
+                .map_err(|_err| error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant)?;
+                let sighash_type = traceable_unfold_or_error!(
+                    input.sighash_type
+                        .ok_or(error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant),
+                    "Relevant PSBT inputs must have a determined sighash type before finalization.",
+                );
+                let taproot_sighash_type = traceable_unfold_or_error!(
+                    sighash_type
+                        .taproot_hash_ty()
+                        .map_err(|_err| {
+                            error::ConsumeWithdrawalIsoBoomletMessage2Error::InternalInvariant
+                        }),
+                    "Relevant PSBT inputs must use a taproot-compatible sighash type.",
+                );
                 let final_tap_signature = bitcoin::taproot::Signature {
                     signature: final_signature,
-                    sighash_type: input
-                        .sighash_type
-                        .expect("Assumed sighash type of a relevant input to be determined before.")
-                        .taproot_hash_ty()
-                        .expect("Assumed the PSBT sighash type of a relevant input to be convertible to tap sighash type."),
+                    sighash_type: taproot_sighash_type,
                 };
                 input.tap_script_sigs.insert(
                     (

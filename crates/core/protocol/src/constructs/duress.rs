@@ -253,21 +253,38 @@ impl DuressCheckSpace {
     pub fn find_indices(
         &self,
         country_codes: [usize; DURESS_CHOICE_SIZE],
-    ) -> [usize; DURESS_CHOICE_SIZE] {
-        std::array::from_fn(|i| {
-            self.duress_sets_collection[i]
+    ) -> Result<[usize; DURESS_CHOICE_SIZE], DuressCheckSpaceFindIndicesError> {
+        let mut indices = [0usize; DURESS_CHOICE_SIZE];
+        for (position, country_code) in country_codes.into_iter().enumerate() {
+            indices[position] = self.duress_sets_collection[position]
                 .iter()
                 .enumerate()
                 .find_map(|(index, duress_set_country_code)| {
-                    if country_codes[i] == *duress_set_country_code {
+                    if country_code == *duress_set_country_code {
                         Some(index)
                     } else {
                         None
                     }
                 })
-                .unwrap()
-        })
+                .ok_or(DuressCheckSpaceFindIndicesError::CountryCodeNotPresent {
+                    position,
+                    country_code,
+                })?;
+        }
+
+        Ok(indices)
     }
+}
+
+#[derive(Debug, Display, Error)]
+pub enum DuressCheckSpaceFindIndicesError {
+    #[display(
+        "country code {country_code} at position {position} is not present in duress check space"
+    )]
+    CountryCodeNotPresent {
+        position: usize,
+        country_code: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -318,7 +335,7 @@ impl DuressCheckSpaceWithNonce {
     pub fn find_indices(
         &self,
         country_codes: [usize; DURESS_CHOICE_SIZE],
-    ) -> [usize; DURESS_CHOICE_SIZE] {
+    ) -> Result<[usize; DURESS_CHOICE_SIZE], DuressCheckSpaceFindIndicesError> {
         self.duress_check_space.find_indices(country_codes)
     }
 }

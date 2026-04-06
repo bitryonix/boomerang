@@ -162,16 +162,20 @@ impl Pong {
                         .map_err(PingError::SignatureVerification)?;
                     let ping_seq_num = *previous_ping_seq_nums_self_exclusive_collection
                         .get(identity_pubkey)
-                        .expect("Assumed that have already asserted the existence of all ping seq nums.");
-                    let reached_mystery_flag_check = if let CollectivePingReachedMysteryFlagCheck::Check(reached_boomlets_collection) = &collective_ping_reached_mystery_flag_check {
-                        if reached_boomlets_collection.contains_key(identity_pubkey) {
-                            ReachedMysteryFlagCheck::Check(true)
+                        .ok_or(PingError::MissingCollectivePingSeqNum)?;
+                    let reached_mystery_flag_check =
+                        if let CollectivePingReachedMysteryFlagCheck::Check(
+                            reached_boomlets_collection,
+                        ) = &collective_ping_reached_mystery_flag_check
+                        {
+                            if reached_boomlets_collection.contains_key(identity_pubkey) {
+                                ReachedMysteryFlagCheck::Check(true)
+                            } else {
+                                ReachedMysteryFlagCheck::Check(false)
+                            }
                         } else {
-                            ReachedMysteryFlagCheck::Check(false)
-                        }
-                    } else {
-                        ReachedMysteryFlagCheck::Skip
-                    };
+                            ReachedMysteryFlagCheck::Skip
+                        };
 
                     ping.check_correctness(
                         MagicCheck::Check,
@@ -181,7 +185,7 @@ impl Pong {
                         PingSeqNumCheck::Check(ping_seq_num),
                         reached_mystery_flag_check,
                     )
-                        .map_err(PingError::IncorrectPing)?;
+                    .map_err(PingError::IncorrectPing)?;
 
                     Ok(())
                 })?;
@@ -204,4 +208,5 @@ pub enum PongCheckCorrectnessError {
 pub enum PingError {
     SignatureVerification(CryptographySignatureVerificationError),
     IncorrectPing(PingCheckCorrectnessError),
+    MissingCollectivePingSeqNum,
 }

@@ -15,7 +15,10 @@ use sar::Sar;
 use tokio::sync::{Barrier, mpsc};
 use tracing::{debug, info};
 
-use crate::envelopes::{PeerToSarEnvelope, SarToPeerEnvelope, SarToWtEnvelope, WtToSarEnvelope};
+use crate::{
+    envelopes::{PeerToSarEnvelope, SarToPeerEnvelope, SarToWtEnvelope, WtToSarEnvelope},
+    error_ext::{NetworkedResult, OrErr, unexpected},
+};
 
 pub struct SarActor {
     sar: Sar,
@@ -45,58 +48,58 @@ impl SarActor {
         }
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> NetworkedResult<()> {
         // SAR is pre-initialized by Network; just retrieve the identity.
-        let sar_id = self.sar.get_sar_id().unwrap();
+        let sar_id = self.sar.get_sar_id().or_err()?;
         debug!("SarActor: started (sar_id obtained).");
         info!("SarActor: starting setup and waiting for peer phone messages.");
 
         // ── Setup phase ──────────────────────────────────────────────────────
 
         // Step 3: receive SetupPhoneSarMessage1, reply with SetupSarPhoneMessage1
-        match self.peer_to_sar_rx.recv().await.unwrap() {
+        match self.peer_to_sar_rx.recv().await.or_err()? {
             PeerToSarEnvelope::SetupPhoneSarMessage1(msg) => {
-                self.sar.consume_setup_phone_sar_message_1(msg).unwrap();
-                let reply = self.sar.produce_setup_sar_phone_message_1().unwrap();
+                self.sar.consume_setup_phone_sar_message_1(msg).or_err()?;
+                let reply = self.sar.produce_setup_sar_phone_message_1().or_err()?;
                 self.sar_to_peer_tx
                     .send(SarToPeerEnvelope::SetupSarPhoneMessage1(reply))
                     .await
-                    .unwrap();
+                    .or_err()?;
                 debug!("SarActor: setup phone-sar round 1 done.");
             }
-            _ => panic!("SarActor: unexpected message, expected SetupPhoneSarMessage1"),
+            _ => return unexpected("SarActor: unexpected message, expected SetupPhoneSarMessage1"),
         }
 
         // Step 7: receive SetupPhoneSarMessage2, reply with SetupSarPhoneMessage2
-        match self.peer_to_sar_rx.recv().await.unwrap() {
+        match self.peer_to_sar_rx.recv().await.or_err()? {
             PeerToSarEnvelope::SetupPhoneSarMessage2(msg) => {
-                self.sar.consume_setup_phone_sar_message_2(msg).unwrap();
-                let reply = self.sar.produce_setup_sar_phone_message_2().unwrap();
+                self.sar.consume_setup_phone_sar_message_2(msg).or_err()?;
+                let reply = self.sar.produce_setup_sar_phone_message_2().or_err()?;
                 self.sar_to_peer_tx
                     .send(SarToPeerEnvelope::SetupSarPhoneMessage2(reply))
                     .await
-                    .unwrap();
+                    .or_err()?;
                 debug!("SarActor: setup phone-sar round 2 done.");
             }
-            _ => panic!("SarActor: unexpected message, expected SetupPhoneSarMessage2"),
+            _ => return unexpected("SarActor: unexpected message, expected SetupPhoneSarMessage2"),
         }
 
         // Step N: receive SetupWtSarMessage1 from WT, reply with SetupSarWtMessage1
-        match self.wt_to_sar_rx.recv().await.unwrap() {
+        match self.wt_to_sar_rx.recv().await.or_err()? {
             WtToSarEnvelope::SetupWtSarMessage1(msg) => {
-                self.sar.consume_setup_wt_sar_message_1(msg).unwrap();
-                let reply = self.sar.produce_setup_sar_wt_message_1().unwrap();
+                self.sar.consume_setup_wt_sar_message_1(msg).or_err()?;
+                let reply = self.sar.produce_setup_sar_wt_message_1().or_err()?;
                 self.sar_to_wt_tx
                     .send(SarToWtEnvelope::SetupSarWtMessage1 {
                         sar_id: sar_id.clone(),
                         msg: Box::new(reply),
                     })
                     .await
-                    .unwrap();
+                    .or_err()?;
                 debug!("SarActor: setup WT-SAR finalisation done.");
                 info!("SarActor: registered with WT.");
             }
-            _ => panic!("SarActor: unexpected message, expected SetupWtSarMessage1"),
+            _ => return unexpected("SarActor: unexpected message, expected SetupWtSarMessage1"),
         }
 
         info!("SarActor: setup complete.");
@@ -110,37 +113,37 @@ impl SarActor {
         //   • Non-initiator SAR: WithdrawalWtNonInitiatorSarMessage1 → WithdrawalNonInitiatorSarWtMessage1
         //                        (may also receive a ping message)
 
-        match self.wt_to_sar_rx.recv().await.unwrap() {
+        match self.wt_to_sar_rx.recv().await.or_err()? {
             WtToSarEnvelope::WithdrawalWtSarMessage1(msg) => {
                 // Initiator SAR path
                 info!("SarActor: acting on the initiator-side SAR withdrawal path.");
-                self.sar.consume_withdrawal_wt_sar_message_1(msg).unwrap();
-                let reply = self.sar.produce_withdrawal_sar_wt_message_1().unwrap();
+                self.sar.consume_withdrawal_wt_sar_message_1(msg).or_err()?;
+                let reply = self.sar.produce_withdrawal_sar_wt_message_1().or_err()?;
                 self.sar_to_wt_tx
                     .send(SarToWtEnvelope::WithdrawalSarWtMessage1 {
                         sar_id: sar_id.clone(),
                         msg: reply,
                     })
                     .await
-                    .unwrap();
+                    .or_err()?;
                 debug!("SarActor: withdrawal initiator round 1 done.");
 
                 // Keep responding until the WT closes its sender.
                 while let Some(envelope) = self.wt_to_sar_rx.recv().await {
                     match envelope {
                         WtToSarEnvelope::WithdrawalWtSarMessage2(msg) => {
-                            self.sar.consume_withdrawal_wt_sar_message_2(msg).unwrap();
-                            let reply = self.sar.produce_withdrawal_sar_wt_message_2().unwrap();
+                            self.sar.consume_withdrawal_wt_sar_message_2(msg).or_err()?;
+                            let reply = self.sar.produce_withdrawal_sar_wt_message_2().or_err()?;
                             self.sar_to_wt_tx
                                 .send(SarToWtEnvelope::WithdrawalSarWtMessage2 {
                                     sar_id: sar_id.clone(),
                                     msg: reply,
                                 })
                                 .await
-                                .unwrap();
+                                .or_err()?;
                             debug!("SarActor: withdrawal initiator ping round done.");
                         }
-                        _ => panic!("SarActor: expected WithdrawalWtSarMessage2"),
+                        _ => return unexpected("SarActor: expected WithdrawalWtSarMessage2"),
                     }
                 }
             }
@@ -150,45 +153,48 @@ impl SarActor {
                 info!("SarActor: acting on the non-initiator SAR withdrawal path.");
                 self.sar
                     .consume_withdrawal_wt_non_initiator_sar_message_1(msg)
-                    .unwrap();
+                    .or_err()?;
                 let reply = self
                     .sar
                     .produce_withdrawal_non_initiator_sar_wt_message_1()
-                    .unwrap();
+                    .or_err()?;
                 self.sar_to_wt_tx
                     .send(SarToWtEnvelope::WithdrawalNonInitiatorSarWtMessage1 {
                         sar_id: sar_id.clone(),
                         msg: reply,
                     })
                     .await
-                    .unwrap();
+                    .or_err()?;
                 debug!("SarActor: withdrawal non-initiator round done.");
 
                 // Keep responding until the WT closes its sender.
                 while let Some(envelope) = self.wt_to_sar_rx.recv().await {
                     match envelope {
                         WtToSarEnvelope::WithdrawalWtSarMessage2(msg) => {
-                            self.sar.consume_withdrawal_wt_sar_message_2(msg).unwrap();
-                            let reply = self.sar.produce_withdrawal_sar_wt_message_2().unwrap();
+                            self.sar.consume_withdrawal_wt_sar_message_2(msg).or_err()?;
+                            let reply = self.sar.produce_withdrawal_sar_wt_message_2().or_err()?;
                             self.sar_to_wt_tx
                                 .send(SarToWtEnvelope::WithdrawalSarWtMessage2 {
                                     sar_id: sar_id.clone(),
                                     msg: reply,
                                 })
                                 .await
-                                .unwrap();
+                                .or_err()?;
                             debug!("SarActor: withdrawal non-initiator ping round done.");
                         }
                         _ => {
-                            panic!("SarActor: expected WithdrawalWtSarMessage2 after non-initiator")
+                            return unexpected(
+                                "SarActor: expected WithdrawalWtSarMessage2 after non-initiator",
+                            );
                         }
                     }
                 }
             }
 
-            _ => panic!("SarActor: unexpected withdrawal message"),
+            _ => return unexpected("SarActor: unexpected withdrawal message"),
         }
 
         info!("SarActor: withdrawal complete.");
+        Ok(())
     }
 }

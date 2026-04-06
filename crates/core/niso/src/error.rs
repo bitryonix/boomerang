@@ -271,6 +271,7 @@ pub enum ProduceSetupNisoOutput3Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalNisoInput1Error {
     StateNotSynchronized,
+    InternalInvariant,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     BadPsbt,
     IrrelevantPsbt,
@@ -318,6 +319,7 @@ pub enum ProduceWithdrawalNisoWtMessage1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalWtNonInitiatorNisoMessage1Error {
     StateNotSynchronized,
+    InternalInvariant,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     MalfunctioningFullNode,
     BoomerangEraHasNotStarted,
@@ -337,6 +339,7 @@ pub enum ProduceWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1Error {
     StateNotSynchronized,
+    InternalInvariant,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     BadPsbt,
     IrrelevantPsbt,
@@ -589,6 +592,7 @@ pub enum ProduceWithdrawalNisoWtMessage4Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalWtNisoMessage4Error {
     StateNotSynchronized,
+    InternalInvariant,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     BadPsbt,
     NotTheSamePeers,

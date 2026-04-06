@@ -65,7 +65,7 @@ operator-managed and does not rebuild it.
 ## State Root Behavior
 
 The default artifact base is the visible repository-root
-[`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md) directory.
+[`poc-runs/`](../../poc-runs/README.md) directory.
 
 By default, `poc-runtime` treats `--state-root` as a base directory and creates one fresh
 child run directory under it. That child run directory is kept after the run finishes.

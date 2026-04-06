@@ -1,4 +1,5 @@
 use derive_more::{Display, Error};
+use protocol::constructs::DuressCheckSpaceFindIndicesError;
 
 ///////////////////////
 ///// Setup errors ////
@@ -39,6 +40,7 @@ pub enum ProduceSetupIsoInput1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeSetupStOutput1Error {
     StateNotSynchronized,
+    InvalidDuressConsentSetCountryCodes(DuressCheckSpaceFindIndicesError),
 }
 
 #[derive(Debug, Display, Error)]
@@ -49,6 +51,7 @@ pub enum ProduceSetupStInput1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeSetupStOutput2Error {
     StateNotSynchronized,
+    InvalidDuressConsentSetCountryCodes(DuressCheckSpaceFindIndicesError),
 }
 
 #[derive(Debug, Display, Error)]
@@ -171,6 +174,9 @@ pub enum ConsumeSetupNisoOutput3Error {
 #[derive(Debug, Display, Error)]
 pub enum ProduceWithdrawalNisoInput1Error {
     StateNotSynchronized,
+    InvalidAbsoluteLocktime,
+    InvalidWithdrawalAmount,
+    PsbtConstruction(bitcoin::psbt::Error),
 }
 
 #[derive(Debug, Display, Error)]
@@ -210,11 +216,13 @@ pub enum ProduceWithdrawalNonInitiatorStInput1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalStOutput2Error {
     StateNotSynchronized,
+    InvalidDuressConsentSetCountryCodes(DuressCheckSpaceFindIndicesError),
 }
 
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalNonInitiatorStOutput2Error {
     StateNotSynchronized,
+    InvalidDuressConsentSetCountryCodes(DuressCheckSpaceFindIndicesError),
 }
 
 #[derive(Debug, Display, Error)]
@@ -230,6 +238,7 @@ pub enum ProduceWithdrawalNonInitiatorStInput2Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalStOutput3Error {
     StateNotSynchronized,
+    InvalidDuressConsentSetCountryCodes(DuressCheckSpaceFindIndicesError),
 }
 
 #[derive(Debug, Display, Error)]

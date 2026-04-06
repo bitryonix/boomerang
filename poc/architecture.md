@@ -15,4 +15,4 @@ without mixing them into the reusable runtime crates.
   - reference linear runner that mirrors the protocol diagrams
 
 The default run-artifact base for this area is the visible repository-root
-[`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md) directory.
+[`poc-runs/`](../poc-runs/README.md) directory.

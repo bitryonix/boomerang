@@ -347,7 +347,9 @@ impl Peer {
             duress_consent_set_country_codes_chosen_by_user[index] = country_code;
         });
         let duress_consent_set_indices = DuressSignalIndex::new(
-            duress_check_space.find_indices(duress_consent_set_country_codes_chosen_by_user),
+            duress_check_space
+                .find_indices(duress_consent_set_country_codes_chosen_by_user)
+                .map_err(error::ConsumeSetupStOutput1Error::InvalidDuressConsentSetCountryCodes)?,
         );
 
         let duress_consent_set = duress_check_space.derive_consent_set(&duress_consent_set_indices);
@@ -417,8 +419,9 @@ impl Peer {
         };
         // Do computation.
         let duress_consent_set_country_codes = duress_consent_set.get_country_codes();
-        let duress_consent_set_indices_in_duress_check_space =
-            duress_check_space.find_indices(duress_consent_set_country_codes);
+        let duress_consent_set_indices_in_duress_check_space = duress_check_space
+            .find_indices(duress_consent_set_country_codes)
+            .map_err(error::ConsumeSetupStOutput2Error::InvalidDuressConsentSetCountryCodes)?;
         let duress_signal_index =
             DuressSignalIndex::new(duress_consent_set_indices_in_duress_check_space);
 

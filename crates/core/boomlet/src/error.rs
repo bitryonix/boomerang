@@ -254,6 +254,7 @@ pub enum ProduceSetupBoomletNisoMessage12Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalNisoBoomletMessage1Error {
     StateNotSynchronized,
+    InternalInvariant,
     BoomerangEraHasNotStarted,
 }
 
@@ -280,6 +281,7 @@ pub enum ProduceWithdrawalBoomletNisoMessage2Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalNonInitiatorNisoNonInitiatorBoomletMessage1Error {
     StateNotSynchronized,
+    InternalInvariant,
     SignatureVerification(CryptographySignatureVerificationError),
     UnauthorizedInitiator,
     SymmetricDecryption(CryptographySymmetricDecryptionError),
@@ -456,6 +458,7 @@ pub enum ProduceWithdrawalBoomletNisoMessage8Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalIsoBoomletMessage1Error {
     StateNotSynchronized,
+    InternalInvariant,
 }
 
 #[derive(Debug, Display, Error)]
@@ -466,6 +469,7 @@ pub enum ProduceWithdrawalBoomletIsoMessage1Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalIsoBoomletMessage2Error {
     StateNotSynchronized,
+    InternalInvariant,
     InvalidSignatureInputs,
     PartialSignatureVerification(musig2::errors::VerifyError),
 }

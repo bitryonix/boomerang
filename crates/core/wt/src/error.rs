@@ -188,6 +188,7 @@ pub enum ProduceWithdrawalWtSarMessage2Error {
 #[derive(Debug, Display, Error)]
 pub enum ConsumeWithdrawalSarWtMessage2Error {
     StateNotSynchronized,
+    InternalInvariant,
     NotTheSameSars,
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     MalfunctioningFullNode,
@@ -220,6 +221,7 @@ pub enum ConsumeWithdrawalNisoWtMessage4Error {
 #[derive(Debug)]
 pub enum ConsumeWithdrawalNisoWtMessage5Error {
     StateNotSynchronized,
+    InternalInvariant,
     NotTheSamePeers,
     PsbtCombination(bitcoin::psbt::Error),
     PsbtFinalization(miniscript::psbt::Error),

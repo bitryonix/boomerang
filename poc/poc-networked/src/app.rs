@@ -189,26 +189,21 @@ pub(crate) async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Vec<_>>();
 
     let mut join_set = JoinSet::new();
-    join_set.spawn(async move {
-        wt_actor.run().await;
-    });
+    join_set.spawn(async move { wt_actor.run().await });
 
     for sar_actor in sar_actors {
-        join_set.spawn(async move {
-            sar_actor.run().await;
-        });
+        join_set.spawn(async move { sar_actor.run().await });
     }
 
     for peer_actor in peer_actors {
-        join_set.spawn(async move {
-            peer_actor.run().await;
-        });
+        join_set.spawn(async move { peer_actor.run().await });
     }
 
     while let Some(join_result) = join_set.join_next().await {
         // Surfacing task panics as errors keeps the legacy runner debuggable without crashing the
         // whole process through an implicit unwrap at the task boundary.
-        join_result?;
+        let task_result = join_result?;
+        task_result.map_err(|err| -> Box<dyn std::error::Error> { err })?;
     }
 
     info!("NetworkedPoC: protocol run finished.");

@@ -61,14 +61,14 @@ impl Peer {
         {}
 
         // Do computation.
+        let lock_height =
+            bitcoin::absolute::Height::from_consensus(absolute_locktime_for_withdrawal_transaction)
+                .map_err(|_| error::ProduceWithdrawalNisoInput1Error::InvalidAbsoluteLocktime)?;
+        let withdrawal_amount = Amount::from_btc(withdrawal_transaction_amount_in_f64_btc)
+            .map_err(|_| error::ProduceWithdrawalNisoInput1Error::InvalidWithdrawalAmount)?;
         let transaction = Transaction {
             version: Version::TWO,
-            lock_time: bitcoin::absolute::LockTime::Blocks(
-                bitcoin::absolute::Height::from_consensus(
-                    absolute_locktime_for_withdrawal_transaction,
-                )
-                .unwrap(),
-            ),
+            lock_time: bitcoin::absolute::LockTime::Blocks(lock_height),
             input: vec![TxIn {
                 previous_output: OutPoint {
                     txid: funding_txid,
@@ -79,11 +79,12 @@ impl Peer {
                 witness: Witness::new(),
             }],
             output: vec![TxOut {
-                value: Amount::from_btc(withdrawal_transaction_amount_in_f64_btc).unwrap(),
+                value: withdrawal_amount,
                 script_pubkey: destination_address.script_pubkey(),
             }],
         };
-        let withdrawal_psbt = Psbt::from_unsigned_tx(transaction).unwrap();
+        let withdrawal_psbt = Psbt::from_unsigned_tx(transaction)
+            .map_err(error::ProduceWithdrawalNisoInput1Error::PsbtConstruction)?;
 
         // Change state.
         self.state = State::Withdrawal_AfterWithdrawalNisoInput1_InitiatorPeerCreatedThePsbt;
@@ -346,8 +347,9 @@ impl Peer {
 
         // Do computation.
         let duress_consent_set_country_codes = duress_consent_set.get_country_codes();
-        let duress_consent_set_indices_in_duress_check_space =
-            duress_check_space.find_indices(duress_consent_set_country_codes);
+        let duress_consent_set_indices_in_duress_check_space = duress_check_space
+            .find_indices(duress_consent_set_country_codes)
+            .map_err(error::ConsumeWithdrawalStOutput2Error::InvalidDuressConsentSetCountryCodes)?;
         let duress_signal =
             DuressSignalIndex::new(duress_consent_set_indices_in_duress_check_space);
 
@@ -417,7 +419,11 @@ impl Peer {
         // Do computation.
         let duress_consent_set_country_codes = duress_consent_set.get_country_codes();
         let duress_consent_set_indices_in_duress_check_space =
-            duress_check_space.find_indices(duress_consent_set_country_codes);
+            duress_check_space
+                .find_indices(duress_consent_set_country_codes)
+                .map_err(
+                    error::ConsumeWithdrawalNonInitiatorStOutput2Error::InvalidDuressConsentSetCountryCodes,
+                )?;
         let duress_signal =
             DuressSignalIndex::new(duress_consent_set_indices_in_duress_check_space);
 
@@ -489,8 +495,9 @@ impl Peer {
 
         // Do computation.
         let duress_consent_set_country_codes = duress_consent_set.get_country_codes();
-        let duress_consent_set_indices_in_duress_check_space =
-            duress_check_space.find_indices(duress_consent_set_country_codes);
+        let duress_consent_set_indices_in_duress_check_space = duress_check_space
+            .find_indices(duress_consent_set_country_codes)
+            .map_err(error::ConsumeWithdrawalStOutput3Error::InvalidDuressConsentSetCountryCodes)?;
         let duress_signal =
             DuressSignalIndex::new(duress_consent_set_indices_in_duress_check_space);
 

@@ -169,9 +169,12 @@ impl Iso {
             }),
             "Boomerang descriptor is invalid."
         );
-        let (_, boom_tapleaf_script) = traceable_unfold_or_panic!(
-            descriptor.iter_scripts().next().ok_or(()),
-            "Assumed Boomerang descriptor to have a Boom script spend path.",
+        let (_, boom_tapleaf_script) = traceable_unfold_or_error!(
+            descriptor
+                .iter_scripts()
+                .next()
+                .ok_or(error::ConsumeWithdrawalBoomletIsoMessage1Error::InvalidSignatureInputs),
+            "Boomlet must provide a Boomerang descriptor with a Boom script spend path.",
         );
         let withdrawal_key_agg_context = PublicKey::musig2_aggregate_to_key_agg_context(vec![
             boomlet_boom_musig2_pubkey_share,
@@ -197,7 +200,7 @@ impl Iso {
             .iter()
             .enumerate()
             .zip(boomlet_public_nonces_collection.clone())
-            .for_each(|((index, _input), boomlet_public_nonce)| {
+            .try_for_each(|((index, _input), boomlet_public_nonce)| {
                 let mut nonce_seed_bytes = [0u8; 32];
                 rng.fill_bytes(&mut nonce_seed_bytes);
                 let nonce_seed = NonceSeed::from(nonce_seed_bytes);
@@ -221,7 +224,9 @@ impl Iso {
                             LeafVersion::TapScript,
                         )),
                     )
-                    .unwrap();
+                    .map_err(|_err| {
+                        error::ConsumeWithdrawalBoomletIsoMessage1Error::InvalidSignatureInputs
+                    })?;
                 let aggregated_nonce: AggNonce = vec![boomlet_public_nonce, public_nonce.clone()]
                     .into_iter()
                     .sum();
@@ -234,14 +239,17 @@ impl Iso {
                     &aggregated_nonce,
                     sighash.to_secp_msg().as_ref(),
                 )
-                .unwrap();
+                .map_err(|_err| {
+                    error::ConsumeWithdrawalBoomletIsoMessage1Error::InvalidSignatureInputs
+                })?;
 
                 withdrawal_secret_nonces_collection.push(secret_nonce);
                 withdrawal_public_nonces_collection.push(public_nonce);
                 withdrawal_aggregated_nonces_collection.push(aggregated_nonce);
                 withdrawal_sighashes_collection.push(sighash);
                 withdrawal_partial_signatures_collection.push(partial_signature);
-            });
+                Ok(())
+            })?;
 
         // Change State.
         self.state = State::Withdrawal_AfterWithdrawalBoomletIsoMessage1_WithdrawalBoomletSigningDataReceived;
@@ -352,13 +360,18 @@ impl Iso {
 
         // Do computation
         let mut withdrawal_psbt = withdrawal_psbt.clone();
-        let descriptor = traceable_unfold_or_panic!(
-            Tr::<XOnlyPublicKey>::from_str(boomerang_descriptor),
-            "Assumed Boomerang descriptor to be valid."
+        let descriptor = traceable_unfold_or_error!(
+            Tr::<XOnlyPublicKey>::from_str(boomerang_descriptor).map_err(|_err| {
+                error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs
+            }),
+            "Boomlet must provide a valid Boomerang descriptor.",
         );
-        let (_, boom_tapleaf_script) = traceable_unfold_or_panic!(
-            descriptor.iter_scripts().next().ok_or(()),
-            "Assumed Boomerang descriptor to have a Boom script spend path.",
+        let (_, boom_tapleaf_script) = traceable_unfold_or_error!(
+            descriptor
+                .iter_scripts()
+                .next()
+                .ok_or(error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs),
+            "Boomlet must provide a Boomerang descriptor with a Boom script spend path.",
         );
         if withdrawal_psbt.inputs.len() != boomlet_public_nonces_collection.len() {
             let err = error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs;
@@ -411,16 +424,49 @@ impl Iso {
                     error_log!(err, "Failed to verify Boomlet's partial signature on PSBT input.");
                     return Err(err);
                 }
-                let partial_signature: PartialSignature = musig2::sign_partial(withdrawal_key_agg_context, <cryptography::PrivateKey as Into<musig2::secp256k1::SecretKey>>::into(*normal_privkey), secret_nonce.clone(), &aggregated_nonce, sighash.to_secp_msg().as_ref()).unwrap();
-                let final_signature_musig2: musig2::secp256k1::schnorr::Signature = musig2::aggregate_partial_signatures(withdrawal_key_agg_context, &aggregated_nonce, vec![partial_signature, boomlet_partial_signature], sighash.to_secp_msg().as_ref()).unwrap();
-                let final_signature = bitcoin::secp256k1::schnorr::Signature::from_str(&final_signature_musig2.to_string()).unwrap();
+                let partial_signature: PartialSignature = musig2::sign_partial(
+                    withdrawal_key_agg_context,
+                    <cryptography::PrivateKey as Into<musig2::secp256k1::SecretKey>>::into(
+                        *normal_privkey,
+                    ),
+                    secret_nonce.clone(),
+                    &aggregated_nonce,
+                    sighash.to_secp_msg().as_ref(),
+                )
+                .map_err(|_err| {
+                    error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs
+                })?;
+                let final_signature_musig2: musig2::secp256k1::schnorr::Signature =
+                    musig2::aggregate_partial_signatures(
+                        withdrawal_key_agg_context,
+                        &aggregated_nonce,
+                        vec![partial_signature, boomlet_partial_signature],
+                        sighash.to_secp_msg().as_ref(),
+                    )
+                    .map_err(|_err| {
+                        error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs
+                    })?;
+                let final_signature = bitcoin::secp256k1::schnorr::Signature::from_str(
+                    &final_signature_musig2.to_string(),
+                )
+                .map_err(|_err| {
+                    error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs
+                })?;
+                let sighash_type = traceable_unfold_or_error!(
+                    input.sighash_type.ok_or(
+                        error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs,
+                    ),
+                    "Relevant PSBT inputs must have a determined sighash type before finalization.",
+                );
+                let taproot_sighash_type = traceable_unfold_or_error!(
+                    sighash_type.taproot_hash_ty().map_err(|_err| {
+                        error::ConsumeWithdrawalBoomletIsoMessage2Error::InvalidSignatureInputs
+                    }),
+                    "Relevant PSBT inputs must use a taproot-compatible sighash type.",
+                );
                 let final_tap_signature = bitcoin::taproot::Signature {
                     signature: final_signature,
-                    sighash_type: input
-                        .sighash_type
-                        .expect("Assumed sighash type of a relevant input to be determined before.")
-                        .taproot_hash_ty()
-                        .expect("Assumed the PSBT sighash type of a relevant input to be convertible to tap sighash type."),
+                    sighash_type: taproot_sighash_type,
                 };
                 input.tap_script_sigs.insert(
                     (

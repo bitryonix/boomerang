@@ -30,6 +30,7 @@ resolver = "3"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.87"
+repository = "https://git.2099999997690000.com/ntl/boomerang.git"
 
 [workspace.dependencies]
 boomerang-config = { path = "crates/runtime/boomerang-config" }

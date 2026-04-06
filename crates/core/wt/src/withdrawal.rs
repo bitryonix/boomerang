@@ -1829,12 +1829,20 @@ impl Wt {
                     "Failed to verify Boomlet's signature on ping.",
                 );
                 // Check (3) if the mystery has been reached.
-                let boomlet_i_reached_mystery_flag = *boomlet_i_reached_mystery_flag_collection
-                    .get(wt_peer_id.get_boomlet_identity_pubkey())
-                    .expect("Assumed to have the reached ack flag of all peers.");
-                let registered_boomlet_i_ping_seq_num = *registered_boomlet_i_ping_seq_num_collection
-                    .get(wt_peer_id.get_boomlet_identity_pubkey())
-                    .expect("Assumed to have the ping seq num of all peers.");
+                let boomlet_i_reached_mystery_flag = traceable_unfold_or_error!(
+                    boomlet_i_reached_mystery_flag_collection
+                        .get(wt_peer_id.get_boomlet_identity_pubkey())
+                        .copied()
+                        .ok_or(error::ConsumeWithdrawalSarWtMessage2Error::InternalInvariant),
+                    "WT must retain the reached-mystery flag for every registered peer.",
+                );
+                let registered_boomlet_i_ping_seq_num = traceable_unfold_or_error!(
+                    registered_boomlet_i_ping_seq_num_collection
+                        .get(wt_peer_id.get_boomlet_identity_pubkey())
+                        .copied()
+                        .ok_or(error::ConsumeWithdrawalSarWtMessage2Error::InternalInvariant),
+                    "WT must retain the ping sequence number for every registered peer.",
+                );
                 // Check (4) ping's correct composition.
                 traceable_unfold_or_error!(
                     received_boomlet_ping
@@ -1963,7 +1971,7 @@ impl Wt {
                     .peek_data()
                     .get_last_seen_block()
             })
-            .fold(absolute::Height::from_consensus(0).unwrap(), max);
+            .fold(absolute::Height::MIN, max);
         let most_work_bitcoin_block_height = loop {
             let most_work_bitcoin_block_height = traceable_unfold_or_error!(
                 absolute::Height::from_consensus(traceable_unfold_or_error!(
@@ -2303,22 +2311,24 @@ impl Wt {
             );
             return Err(err);
         }
-        let (_acc_wt_peer_id, (mut acc_psbt,)) = opened_parcel
-            .next()
-            .expect("Assumed the number of peers is bigger than 1.");
+        let (_acc_wt_peer_id, (mut acc_psbt,)) = traceable_unfold_or_error!(
+            opened_parcel
+                .next()
+                .ok_or(error::ConsumeWithdrawalNisoWtMessage5Error::InternalInvariant),
+            "WT must receive at least one PSBT after peer membership validation.",
+        );
         opened_parcel.try_for_each(|(_next_wt_peer_id, (next_psbt,))| {
             acc_psbt
                 .combine(next_psbt)
                 .map_err(error::ConsumeWithdrawalNisoWtMessage5Error::PsbtCombination)?;
             Ok(())
         })?;
-        acc_psbt.finalize_mut(&SECP).map_err(|mut err_vec| {
-            error::ConsumeWithdrawalNisoWtMessage5Error::PsbtFinalization(
-                err_vec
-                    .pop()
-                    .expect("Assumed to have at least on error on failure."),
-            )
-        })?;
+        acc_psbt
+            .finalize_mut(&SECP)
+            .map_err(|mut err_vec| match err_vec.pop() {
+                Some(err) => error::ConsumeWithdrawalNisoWtMessage5Error::PsbtFinalization(err),
+                None => error::ConsumeWithdrawalNisoWtMessage5Error::InternalInvariant,
+            })?;
         let signed_tx = acc_psbt
             .extract_tx()
             .map_err(error::ConsumeWithdrawalNisoWtMessage5Error::PsbtTxExtraction)?;

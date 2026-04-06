@@ -24,14 +24,14 @@ wt_tor_address = "de5slirlvscorgs6pyct5mc5ji73piegdindiez64jvwb4k3qojvjiid.onion
 inner = "026a5c543a912794051654c47ae069f35f55975d954e463ef0344efea8a401f019"
 "#;
 
-fn sample_wt_id() -> WtId {
-    match toml::from_str::<PublishedProcessIdentity>(WT_PUBLIC_ID_TOML)
-        .expect("WT fixture TOML should stay parseable")
-    {
-        PublishedProcessIdentity::Wt { wt_id } => wt_id,
-        PublishedProcessIdentity::Sar { .. } => {
-            panic!("WT fixture TOML should decode to a WT public identity")
-        }
+fn sample_wt_id() -> Result<WtId, Box<dyn std::error::Error>> {
+    match toml::from_str::<PublishedProcessIdentity>(WT_PUBLIC_ID_TOML)? {
+        PublishedProcessIdentity::Wt { wt_id } => Ok(wt_id),
+        PublishedProcessIdentity::Sar { .. } => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "WT fixture TOML should decode to a WT public identity",
+        )
+        .into()),
     }
 }
 
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // manifest to `boomerang-node cluster up`.
     let boomerang = BoomerangNetworkConfig::default();
     let withdrawal = WithdrawalConfig::default();
-    let wt_id = sample_wt_id();
+    let wt_id = sample_wt_id()?;
 
     let wt = ProcessConfig {
         role: TransportRole::Wt,

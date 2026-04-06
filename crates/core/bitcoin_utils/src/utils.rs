@@ -5,8 +5,6 @@ use bitcoin::{
 use bitcoincore_rpc::RpcApi;
 use derive_more::{Display, Error};
 use miniscript::{MiniscriptKey, ToPublicKey, descriptor::Tr};
-use tracing::{Level, event};
-use tracing_utils::traceable_unfold_or_panic;
 
 pub struct BitcoinUtils;
 
@@ -85,6 +83,9 @@ impl BitcoinUtils {
                     GetTxOutOfUnsignedTxError::NonExistentOutPoints => {
                         HydratePsbtWithTxOutError::NonExistentOutPoints
                     }
+                    GetTxOutOfUnsignedTxError::InternalInvariant => {
+                        HydratePsbtWithTxOutError::InternalInvariant
+                    }
                 })?;
                 // We do not need to fetch non-Boomerang (therefore non-witness) UTXOs of inputs.
                 if tx_out.script_pubkey.is_witness_program() {
@@ -97,15 +98,20 @@ impl BitcoinUtils {
         Ok(())
     }
 
+    /// Resolves the previous output referenced by one unsigned transaction input through the
+    /// configured Bitcoin Core node.
+    ///
+    /// # Errors
+    /// Returns an error when the PSBT input index is not present on the unsigned transaction,
+    /// when Bitcoin Core rejects the lookup, or when the referenced outpoint does not exist.
     fn get_tx_out_of_input_of_unsigned_tx(
         bitcoincore_rpc_client: &bitcoincore_rpc::Client,
         unsigned_tx: &Transaction,
         index: usize,
     ) -> Result<TxOut, GetTxOutOfUnsignedTxError> {
-        let tx_in = traceable_unfold_or_panic!(
-            unsigned_tx.tx_in(index),
-            "Assumed input index to be in range of transaction's tx ins."
-        );
+        let tx_in = unsigned_tx
+            .tx_in(index)
+            .map_err(|_| GetTxOutOfUnsignedTxError::InternalInvariant)?;
         let get_tx_out_result = bitcoincore_rpc_client
             .get_tx_out(
                 &tx_in.previous_output.txid,
@@ -114,10 +120,10 @@ impl BitcoinUtils {
             )
             .map_err(GetTxOutOfUnsignedTxError::BitcoinCoreRpcClient)?
             .ok_or(GetTxOutOfUnsignedTxError::NonExistentOutPoints)?;
-        let tx_out_script_pubkey = traceable_unfold_or_panic!(
-            get_tx_out_result.script_pub_key.script(),
-            "Assumed script pubkey to be derivable from tx out."
-        );
+        let tx_out_script_pubkey = get_tx_out_result
+            .script_pub_key
+            .script()
+            .map_err(|_| GetTxOutOfUnsignedTxError::InternalInvariant)?;
         Ok(TxOut {
             value: get_tx_out_result.value,
             script_pubkey: tx_out_script_pubkey,
@@ -129,8 +135,8 @@ impl BitcoinUtils {
         amount: u32,
     ) -> absolute::Height {
         let height_u32 = height.to_consensus_u32();
-        absolute::Height::from_consensus(height_u32.saturating_sub(amount))
-            .expect("Assumed the result to be a valid block height.")
+        let saturated_height = height_u32.saturating_sub(amount);
+        absolute::Height::from_consensus(saturated_height).unwrap_or(absolute::Height::MIN)
     }
 
     pub fn absolute_height_saturating_add(
@@ -138,8 +144,10 @@ impl BitcoinUtils {
         amount: u32,
     ) -> absolute::Height {
         let height_u32 = height.to_consensus_u32();
-        absolute::Height::from_consensus(height_u32.saturating_add(amount))
-            .expect("Assumed the result to be a valid block height.")
+        let saturated_height = height_u32
+            .saturating_add(amount)
+            .min(absolute::Height::MAX.to_consensus_u32());
+        absolute::Height::from_consensus(saturated_height).unwrap_or(absolute::Height::MAX)
     }
 }
 
@@ -147,6 +155,7 @@ impl BitcoinUtils {
 pub enum HydratePsbtWithTxOutError {
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     NonExistentOutPoints,
+    InternalInvariant,
 }
 
 #[derive(Debug, Display, Error)]
@@ -163,4 +172,5 @@ pub enum VerifyInputsTxOutsAndScriptPubkeysError {
 pub enum GetTxOutOfUnsignedTxError {
     BitcoinCoreRpcClient(bitcoincore_rpc::Error),
     NonExistentOutPoints,
+    InternalInvariant,
 }

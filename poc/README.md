@@ -32,7 +32,7 @@ Use the other two only when you intentionally want their alternate perspectives:
 The PoC area now works with a visible workspace-root artifact base:
 
 - default base
-  - [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+  - [`poc-runs/`](../poc-runs/README.md)
 - default behavior
   - fresh child `run-*` directory
   - kept after the run

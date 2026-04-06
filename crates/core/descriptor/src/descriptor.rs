@@ -15,11 +15,13 @@ use tracing_utils::{traceable_unfold_or_panic, unreachable_panic};
 #[derive(Debug, Getters)]
 #[getset(get = "pub with_prefix")]
 pub struct BoomerangDescriptor {
-    // Main Fields
+    /// Bitcoin network that determines address encoding for the descriptor.
     network: Network,
+    /// Ordered participant identities whose normal and boom keys feed the tap tree.
     peer_ids_collection: BTreeSet<PeerId>,
+    /// Relative milestone heights that define the successive timelocked branches.
     milestone_blocks_collection: Vec<u32>,
-    // Internal Fields
+    /// Cached compiled taproot descriptor derived from the peer set and milestones.
     descriptor: Tr<XOnlyPublicKey>,
 }
 
@@ -101,6 +103,10 @@ impl BoomerangDescriptor {
         self.descriptor.to_string()
     }
 
+    /// Builds one timelocked multisig leaf used inside the Boomerang tap tree.
+    ///
+    /// The returned script enforces `after(milestone)` and then a threshold signature policy
+    /// over the supplied x-only public keys.
     fn multisig_timelocked_tap_script(
         pks: &[XOnlyPublicKey],
         threshold: u32,
@@ -134,6 +140,10 @@ impl BoomerangDescriptor {
         miniscript
     }
 
+    /// Derives a deterministic NUMS-style internal key from the peer set.
+    ///
+    /// The routine starts from the standard unspendable point and hashes the participant set
+    /// until it finds a valid randomizer that keeps the resulting internal key unspendable.
     fn generate_randomized_standard_unspendable_pubkey(
         peer_ids_collection: &BTreeSet<PeerId>,
     ) -> bitcoin::secp256k1::PublicKey {

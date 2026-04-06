@@ -106,7 +106,7 @@ This keeps the non-core layers from becoming secret carriers for WT/SAR key mate
 
 ## Run-Artifact Layout
 
-The default PoC run-artifact base is now [`poc-runs/`](/Users/bedlam/Desktop/getting_rusty/boomerang/poc-runs/README.md)
+The default PoC run-artifact base is now [`poc-runs/`](poc-runs/README.md)
 under the repository root. `poc-runtime` creates one ephemeral child run directory there by
 default, which makes logs and generated manifests easy to find when persistence is explicitly
 enabled while still keeping default runs self-cleaning.

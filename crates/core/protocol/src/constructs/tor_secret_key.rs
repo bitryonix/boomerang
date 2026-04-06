@@ -67,7 +67,7 @@ impl TorSecretKey {
         let public_key_bytes = SigningKey::from_bytes(&self.seed)
             .verifying_key()
             .to_bytes();
-        TorAddress::new(onion_address_from_public_key(public_key_bytes))
+        TorAddress::from_valid_onion_v3_address(onion_address_from_public_key(public_key_bytes))
     }
 
     pub fn to_hidden_service_secret_key_bytes(&self) -> Vec<u8> {

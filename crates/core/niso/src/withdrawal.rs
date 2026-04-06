@@ -150,6 +150,14 @@ impl Niso {
                 error_log!(err, "An out point of the PSBT is non-existent.");
                 err
             }
+            bitcoin_utils::HydratePsbtWithTxOutError::InternalInvariant => {
+                let err = error::ConsumeWithdrawalNisoInput1Error::InternalInvariant;
+                error_log!(
+                    err,
+                    "NISO must only hydrate transaction inputs that point at valid PSBT inputs."
+                );
+                err
+            }
         })?;
         let most_work_bitcoin_block_height = traceable_unfold_or_error!(
             absolute::Height::from_consensus(traceable_unfold_or_error!(
@@ -162,14 +170,20 @@ impl Niso {
             "Expected the block height received from the Bitcoin full node to be correct according to consensus."
         );
         // Check (1) if the block reported by its own niso is higher than milestone block 0.
-        let milestone_block_0 = boomerang_params
-            .get_milestone_blocks_collection()
-            .first()
-            .expect("Assumed milestone blocks to be more than one.");
-        if absolute::Height::from_consensus(*milestone_block_0)
-            .expect("Assumed milestone blocks to be valid.")
-            > most_work_bitcoin_block_height
-        {
+        let milestone_block_0 = traceable_unfold_or_error!(
+            boomerang_params
+                .get_milestone_blocks_collection()
+                .first()
+                .copied()
+                .ok_or(error::ConsumeWithdrawalNisoInput1Error::InternalInvariant),
+            "Boomerang params must contain at least one milestone block.",
+        );
+        let milestone_block_0 = traceable_unfold_or_error!(
+            absolute::Height::from_consensus(milestone_block_0)
+                .map_err(|_err| error::ConsumeWithdrawalNisoInput1Error::InternalInvariant),
+            "Boomerang milestone blocks must be valid consensus heights.",
+        );
+        if milestone_block_0 > most_work_bitcoin_block_height {
             let err = error::ConsumeWithdrawalNisoInput1Error::BoomerangEraHasNotStarted;
             error_log!(err, "Boomerang era has not started yet.");
             return Err(err);
@@ -516,14 +530,21 @@ impl Niso {
             "Expected the block height received from the Bitcoin full node to be correct according to consensus."
         );
         // Check (1) if the block reported by its own niso is higher than milestone block 0.
-        let milestone_block_0 = boomerang_params
-            .get_milestone_blocks_collection()
-            .first()
-            .expect("Assumed milestone blocks to be more than one.");
-        if absolute::Height::from_consensus(*milestone_block_0)
-            .expect("Assumed milestone blocks to be valid.")
-            > most_work_bitcoin_block_height
-        {
+        let milestone_block_0 = traceable_unfold_or_error!(
+            boomerang_params
+                .get_milestone_blocks_collection()
+                .first()
+                .copied()
+                .ok_or(error::ConsumeWithdrawalWtNonInitiatorNisoMessage1Error::InternalInvariant),
+            "Boomerang params must contain at least one milestone block.",
+        );
+        let milestone_block_0 = traceable_unfold_or_error!(
+            absolute::Height::from_consensus(milestone_block_0).map_err(|_err| {
+                error::ConsumeWithdrawalWtNonInitiatorNisoMessage1Error::InternalInvariant
+            }),
+            "Boomerang milestone blocks must be valid consensus heights.",
+        );
+        if milestone_block_0 > most_work_bitcoin_block_height {
             let err =
                 error::ConsumeWithdrawalWtNonInitiatorNisoMessage1Error::BoomerangEraHasNotStarted;
             error_log!(err, "Boomerang era has not started yet.");
@@ -713,9 +734,12 @@ impl Niso {
 
         // Do computation.
         let mut checking_withdrawal_psbt = received_withdrawal_psbt.clone();
-        let boomerang_descriptor: Tr<XOnlyPublicKey> = traceable_unfold_or_panic!(
-            Tr::from_str(boomerang_params.get_boomerang_descriptor()),
-            "Assumed Boomerang descriptor to be valid.",
+        let boomerang_descriptor: Tr<XOnlyPublicKey> = traceable_unfold_or_error!(
+            Tr::from_str(boomerang_params.get_boomerang_descriptor())
+                .map_err(|_err| {
+                    error::ConsumeWithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1Error::InternalInvariant
+                }),
+            "NISO must retain a valid Boomerang descriptor while hydrating withdrawal inputs.",
         );
         // Check (1) if the psbt has proper inputs
         BitcoinUtils::hydrate_psbt_with_tx_out(
@@ -732,6 +756,14 @@ impl Niso {
                     bitcoin_utils::HydratePsbtWithTxOutError::NonExistentOutPoints => {
                         let err = error::ConsumeWithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1Error::BadPsbt;
                         error_log!(err, "An out point of the PSBT is non-existent.");
+                        err
+                    },
+                    bitcoin_utils::HydratePsbtWithTxOutError::InternalInvariant => {
+                        let err = error::ConsumeWithdrawalNonInitiatorBoomletNonInitiatorNisoMessage1Error::InternalInvariant;
+                        error_log!(
+                            err,
+                            "NISO must only hydrate PSBT inputs whose indices and script encodings stay internally consistent."
+                        );
                         err
                     },
                 }
@@ -2916,26 +2948,44 @@ impl Niso {
                     error_log!(err, "An out point of the PSBT is non-existent.");
                     err
                 }
+                bitcoin_utils::HydratePsbtWithTxOutError::InternalInvariant => {
+                    let err = error::ConsumeWithdrawalWtNisoMessage4Error::InternalInvariant;
+                    error_log!(
+                        err,
+                        "NISO must only hydrate PSBT inputs whose indices and script encodings stay internally consistent."
+                    );
+                    err
+                }
             })?;
         // Relevant inputs are the ones that are committed to Boomerang descriptor.
         let relevant_inputs = BitcoinUtils::psbt_inputs_from_descriptor_mut(
             &mut withdrawal_psbt,
             &boomerang_descriptor,
         );
-        relevant_inputs.into_iter().for_each(|(_index, input)| {
+        relevant_inputs.into_iter().try_for_each(|(_index, input)| {
             input.sighash_type = Some(TapSighashType::All.into());
-            let (_, tap_miniscript) = boomerang_descriptor.iter_scripts().next().unwrap();
-            let control_block = boomerang_descriptor
-                .spend_info()
-                .control_block(&(tap_miniscript.encode(), LeafVersion::TapScript))
-                .unwrap();
+            let (_, tap_miniscript) = traceable_unfold_or_error!(
+                boomerang_descriptor
+                    .iter_scripts()
+                    .next()
+                    .ok_or(error::ConsumeWithdrawalWtNisoMessage4Error::InternalInvariant),
+                "Boomerang descriptor must contain a Boom script spend path.",
+            );
+            let control_block = traceable_unfold_or_error!(
+                boomerang_descriptor
+                    .spend_info()
+                    .control_block(&(tap_miniscript.encode(), LeafVersion::TapScript))
+                    .ok_or(error::ConsumeWithdrawalWtNisoMessage4Error::InternalInvariant),
+                "Boomerang descriptor must expose a control block for the Boom script spend path.",
+            );
             input.tap_scripts.insert(
                 control_block,
                 (tap_miniscript.encode(), LeafVersion::TapScript),
             );
             input.tap_merkle_root = boomerang_descriptor.spend_info().merkle_root();
             input.tap_internal_key = Some(*boomerang_descriptor.internal_key());
-        });
+            Ok(())
+        })?;
 
         // Change State.
         self.state =

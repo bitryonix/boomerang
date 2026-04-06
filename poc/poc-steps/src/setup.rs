@@ -17,6 +17,8 @@ use wt::{Wt, WtCreateParams};
 
 use boomerang_config::BoomerangNetworkConfig;
 
+use crate::result_ext::OrErr;
+
 pub struct BoomerangEntities {
     pub bitcoin_node: corepc_node::Node,
     pub network: bitcoin::Network,
@@ -129,7 +131,7 @@ pub fn run(
     let mut corepc_node_conf = Conf::default();
     corepc_node_conf.p2p = P2P::Yes;
     let bitcoin_node =
-        corepc_node::Node::with_conf(bitcoind_executable_path, &corepc_node_conf).unwrap();
+        corepc_node::Node::with_conf(bitcoind_executable_path, &corepc_node_conf).or_err()?;
     bitcoin_node.p2p_connect(true);
     let rpc_client_url = bitcoin_node.params.rpc_socket;
     let rpc_client_cookie_path = bitcoin_node.params.cookie_file.clone();
@@ -382,63 +384,63 @@ pub fn run(
 
     // Initializing protocol entities.
     // Initializing SARs.
-    peer_1_sar_1.initialize().unwrap();
-    peer_1_sar_2.initialize().unwrap();
-    peer_2_sar_1.initialize().unwrap();
-    peer_2_sar_2.initialize().unwrap();
-    peer_3_sar_1.initialize().unwrap();
-    peer_3_sar_2.initialize().unwrap();
-    peer_4_sar_1.initialize().unwrap();
-    peer_4_sar_2.initialize().unwrap();
-    peer_5_sar_1.initialize().unwrap();
-    peer_5_sar_2.initialize().unwrap();
+    peer_1_sar_1.initialize().or_err()?;
+    peer_1_sar_2.initialize().or_err()?;
+    peer_2_sar_1.initialize().or_err()?;
+    peer_2_sar_2.initialize().or_err()?;
+    peer_3_sar_1.initialize().or_err()?;
+    peer_3_sar_2.initialize().or_err()?;
+    peer_4_sar_1.initialize().or_err()?;
+    peer_4_sar_2.initialize().or_err()?;
+    peer_5_sar_1.initialize().or_err()?;
+    peer_5_sar_2.initialize().or_err()?;
 
-    let peer_1_sar_1_id = peer_1_sar_1.get_sar_id().unwrap();
-    let peer_1_sar_2_id = peer_1_sar_2.get_sar_id().unwrap();
-    let peer_2_sar_1_id = peer_2_sar_1.get_sar_id().unwrap();
-    let peer_2_sar_2_id = peer_2_sar_2.get_sar_id().unwrap();
-    let peer_3_sar_1_id = peer_3_sar_1.get_sar_id().unwrap();
-    let peer_3_sar_2_id = peer_3_sar_2.get_sar_id().unwrap();
-    let peer_4_sar_1_id = peer_4_sar_1.get_sar_id().unwrap();
-    let peer_4_sar_2_id = peer_4_sar_2.get_sar_id().unwrap();
-    let peer_5_sar_1_id = peer_5_sar_1.get_sar_id().unwrap();
-    let peer_5_sar_2_id = peer_5_sar_2.get_sar_id().unwrap();
+    let peer_1_sar_1_id = peer_1_sar_1.get_sar_id().or_err()?;
+    let peer_1_sar_2_id = peer_1_sar_2.get_sar_id().or_err()?;
+    let peer_2_sar_1_id = peer_2_sar_1.get_sar_id().or_err()?;
+    let peer_2_sar_2_id = peer_2_sar_2.get_sar_id().or_err()?;
+    let peer_3_sar_1_id = peer_3_sar_1.get_sar_id().or_err()?;
+    let peer_3_sar_2_id = peer_3_sar_2.get_sar_id().or_err()?;
+    let peer_4_sar_1_id = peer_4_sar_1.get_sar_id().or_err()?;
+    let peer_4_sar_2_id = peer_4_sar_2.get_sar_id().or_err()?;
+    let peer_5_sar_1_id = peer_5_sar_1.get_sar_id().or_err()?;
+    let peer_5_sar_2_id = peer_5_sar_2.get_sar_id().or_err()?;
 
     // Initializing WTs.
     active_wt
         .initialize(rpc_client_url.to_string(), rpc_client_auth.clone())
-        .unwrap();
+        .or_err()?;
     wt_2.initialize(rpc_client_url.to_string(), rpc_client_auth.clone())
-        .unwrap();
+        .or_err()?;
     wt_3.initialize(rpc_client_url.to_string(), rpc_client_auth.clone())
-        .unwrap();
+        .or_err()?;
     debug!("Loaded SARs and WTs to be ready to serve.");
     debug!("Setup started.");
 
     // Initializing peers.
     let wt_ids_collection = WtIdsCollection::new(
-        active_wt.get_wt_id().unwrap(),
-        BTreeSet::from_iter(vec![wt_2.get_wt_id().unwrap(), wt_3.get_wt_id().unwrap()]),
+        active_wt.get_wt_id().or_err()?,
+        BTreeSet::from_iter(vec![wt_2.get_wt_id().or_err()?, wt_3.get_wt_id().or_err()?]),
     );
     let peer_1_sar_ids_collection = BTreeSet::from_iter(vec![
-        peer_1_sar_1.get_sar_id().unwrap(),
-        peer_1_sar_2.get_sar_id().unwrap(),
+        peer_1_sar_1.get_sar_id().or_err()?,
+        peer_1_sar_2.get_sar_id().or_err()?,
     ]);
     let peer_2_sar_ids_collection = BTreeSet::from_iter(vec![
-        peer_2_sar_1.get_sar_id().unwrap(),
-        peer_2_sar_2.get_sar_id().unwrap(),
+        peer_2_sar_1.get_sar_id().or_err()?,
+        peer_2_sar_2.get_sar_id().or_err()?,
     ]);
     let peer_3_sar_ids_collection = BTreeSet::from_iter(vec![
-        peer_3_sar_1.get_sar_id().unwrap(),
-        peer_3_sar_2.get_sar_id().unwrap(),
+        peer_3_sar_1.get_sar_id().or_err()?,
+        peer_3_sar_2.get_sar_id().or_err()?,
     ]);
     let peer_4_sar_ids_collection = BTreeSet::from_iter(vec![
-        peer_4_sar_1.get_sar_id().unwrap(),
-        peer_4_sar_2.get_sar_id().unwrap(),
+        peer_4_sar_1.get_sar_id().or_err()?,
+        peer_4_sar_2.get_sar_id().or_err()?,
     ]);
     let peer_5_sar_ids_collection = BTreeSet::from_iter(vec![
-        peer_5_sar_1.get_sar_id().unwrap(),
-        peer_5_sar_2.get_sar_id().unwrap(),
+        peer_5_sar_1.get_sar_id().or_err()?,
+        peer_5_sar_2.get_sar_id().or_err()?,
     ]);
 
     peer_1
@@ -455,7 +457,7 @@ pub fn run(
             wt_ids_collection.clone(),
             peer_1_sar_ids_collection,
         )
-        .unwrap();
+        .or_err()?;
     peer_2
         .initialize(
             milestone_block_0,
@@ -470,7 +472,7 @@ pub fn run(
             wt_ids_collection.clone(),
             peer_2_sar_ids_collection,
         )
-        .unwrap();
+        .or_err()?;
     peer_3
         .initialize(
             milestone_block_0,
@@ -485,7 +487,7 @@ pub fn run(
             wt_ids_collection.clone(),
             peer_3_sar_ids_collection,
         )
-        .unwrap();
+        .or_err()?;
     peer_4
         .initialize(
             milestone_block_0,
@@ -500,7 +502,7 @@ pub fn run(
             wt_ids_collection.clone(),
             peer_4_sar_ids_collection,
         )
-        .unwrap();
+        .or_err()?;
     peer_5
         .initialize(
             milestone_block_0,
@@ -515,7 +517,7 @@ pub fn run(
             wt_ids_collection.clone(),
             peer_5_sar_ids_collection,
         )
-        .unwrap();
+        .or_err()?;
 
     println!("Setup started.");
     //////////////////////////////
@@ -523,11 +525,11 @@ pub fn run(
     //////////////////////////////
     debug!("Step 1:");
 
-    let peer_1_setup_phone_input_1 = peer_1.produce_setup_phone_input_1().unwrap();
-    let peer_2_setup_phone_input_1 = peer_2.produce_setup_phone_input_1().unwrap();
-    let peer_3_setup_phone_input_1 = peer_3.produce_setup_phone_input_1().unwrap();
-    let peer_4_setup_phone_input_1 = peer_4.produce_setup_phone_input_1().unwrap();
-    let peer_5_setup_phone_input_1 = peer_5.produce_setup_phone_input_1().unwrap();
+    let peer_1_setup_phone_input_1 = peer_1.produce_setup_phone_input_1().or_err()?;
+    let peer_2_setup_phone_input_1 = peer_2.produce_setup_phone_input_1().or_err()?;
+    let peer_3_setup_phone_input_1 = peer_3.produce_setup_phone_input_1().or_err()?;
+    let peer_4_setup_phone_input_1 = peer_4.produce_setup_phone_input_1().or_err()?;
+    let peer_5_setup_phone_input_1 = peer_5.produce_setup_phone_input_1().or_err()?;
 
     debug!("Peers produced SetupPhoneInput1 to give SAR registration data to their phones.");
 
@@ -537,30 +539,30 @@ pub fn run(
     debug!("Step 2:");
     peer_1_phone
         .consume_setup_phone_input_1(peer_1_setup_phone_input_1)
-        .unwrap();
+        .or_err()?;
     peer_2_phone
         .consume_setup_phone_input_1(peer_2_setup_phone_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_phone
         .consume_setup_phone_input_1(peer_3_setup_phone_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_phone
         .consume_setup_phone_input_1(peer_4_setup_phone_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_phone
         .consume_setup_phone_input_1(peer_5_setup_phone_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("Phones received SAR registration data.");
     let peer_1_parcel_to_be_sent_setup_phone_sar_message_1 =
-        peer_1_phone.produce_setup_phone_sar_message_1().unwrap();
+        peer_1_phone.produce_setup_phone_sar_message_1().or_err()?;
     let peer_2_parcel_to_be_sent_setup_phone_sar_message_1 =
-        peer_2_phone.produce_setup_phone_sar_message_1().unwrap();
+        peer_2_phone.produce_setup_phone_sar_message_1().or_err()?;
     let peer_3_parcel_to_be_sent_setup_phone_sar_message_1 =
-        peer_3_phone.produce_setup_phone_sar_message_1().unwrap();
+        peer_3_phone.produce_setup_phone_sar_message_1().or_err()?;
     let peer_4_parcel_to_be_sent_setup_phone_sar_message_1 =
-        peer_4_phone.produce_setup_phone_sar_message_1().unwrap();
+        peer_4_phone.produce_setup_phone_sar_message_1().or_err()?;
     let peer_5_parcel_to_be_sent_setup_phone_sar_message_1 =
-        peer_5_phone.produce_setup_phone_sar_message_1().unwrap();
+        peer_5_phone.produce_setup_phone_sar_message_1().or_err()?;
     debug!("Phones produced SetupPhoneSarMessage1 to share registration data with SARs.");
 
     //////////////////////////////
@@ -571,103 +573,103 @@ pub fn run(
         .consume_setup_phone_sar_message_1(
             peer_1_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_1_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_1_sar_2
         .consume_setup_phone_sar_message_1(
             peer_1_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_1_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_1
         .consume_setup_phone_sar_message_1(
             peer_2_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_2_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_2
         .consume_setup_phone_sar_message_1(
             peer_2_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_2_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_1
         .consume_setup_phone_sar_message_1(
             peer_3_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_3_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_2
         .consume_setup_phone_sar_message_1(
             peer_3_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_3_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_1
         .consume_setup_phone_sar_message_1(
             peer_4_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_4_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_2
         .consume_setup_phone_sar_message_1(
             peer_4_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_4_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_1
         .consume_setup_phone_sar_message_1(
             peer_5_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_5_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_2
         .consume_setup_phone_sar_message_1(
             peer_5_parcel_to_be_sent_setup_phone_sar_message_1
                 .look_for_message(&peer_5_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("SARs receive peer registration data.");
     let peer_1_sar_1_setup_sar_phone_message_1 =
-        peer_1_sar_1.produce_setup_sar_phone_message_1().unwrap();
+        peer_1_sar_1.produce_setup_sar_phone_message_1().or_err()?;
     let peer_1_sar_2_setup_sar_phone_message_1 =
-        peer_1_sar_2.produce_setup_sar_phone_message_1().unwrap();
+        peer_1_sar_2.produce_setup_sar_phone_message_1().or_err()?;
     let peer_2_sar_1_setup_sar_phone_message_1 =
-        peer_2_sar_1.produce_setup_sar_phone_message_1().unwrap();
+        peer_2_sar_1.produce_setup_sar_phone_message_1().or_err()?;
     let peer_2_sar_2_setup_sar_phone_message_1 =
-        peer_2_sar_2.produce_setup_sar_phone_message_1().unwrap();
+        peer_2_sar_2.produce_setup_sar_phone_message_1().or_err()?;
     let peer_3_sar_1_setup_sar_phone_message_1 =
-        peer_3_sar_1.produce_setup_sar_phone_message_1().unwrap();
+        peer_3_sar_1.produce_setup_sar_phone_message_1().or_err()?;
     let peer_3_sar_2_setup_sar_phone_message_1 =
-        peer_3_sar_2.produce_setup_sar_phone_message_1().unwrap();
+        peer_3_sar_2.produce_setup_sar_phone_message_1().or_err()?;
     let peer_4_sar_1_setup_sar_phone_message_1 =
-        peer_4_sar_1.produce_setup_sar_phone_message_1().unwrap();
+        peer_4_sar_1.produce_setup_sar_phone_message_1().or_err()?;
     let peer_4_sar_2_setup_sar_phone_message_1 =
-        peer_4_sar_2.produce_setup_sar_phone_message_1().unwrap();
+        peer_4_sar_2.produce_setup_sar_phone_message_1().or_err()?;
     let peer_5_sar_1_setup_sar_phone_message_1 =
-        peer_5_sar_1.produce_setup_sar_phone_message_1().unwrap();
+        peer_5_sar_1.produce_setup_sar_phone_message_1().or_err()?;
     let peer_5_sar_2_setup_sar_phone_message_1 =
-        peer_5_sar_2.produce_setup_sar_phone_message_1().unwrap();
+        peer_5_sar_2.produce_setup_sar_phone_message_1().or_err()?;
     debug!("SARs produced SetupSarPhoneMessage1 to give service payment info to phones.");
 
     //////////////////////////////
@@ -726,25 +728,25 @@ pub fn run(
     ]);
     peer_1_phone
         .consume_setup_sar_phone_message_1(peer_1_parcel_to_be_received_setup_sar_phone_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_phone
         .consume_setup_sar_phone_message_1(peer_2_parcel_to_be_received_setup_sar_phone_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_phone
         .consume_setup_sar_phone_message_1(peer_3_parcel_to_be_received_setup_sar_phone_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_phone
         .consume_setup_sar_phone_message_1(peer_4_parcel_to_be_received_setup_sar_phone_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_phone
         .consume_setup_sar_phone_message_1(peer_5_parcel_to_be_received_setup_sar_phone_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Phones received SARs' service payment info.");
-    let peer_1_setup_phone_output_1 = peer_1_phone.produce_setup_phone_output_1().unwrap();
-    let peer_2_setup_phone_output_1 = peer_2_phone.produce_setup_phone_output_1().unwrap();
-    let peer_3_setup_phone_output_1 = peer_3_phone.produce_setup_phone_output_1().unwrap();
-    let peer_4_setup_phone_output_1 = peer_4_phone.produce_setup_phone_output_1().unwrap();
-    let peer_5_setup_phone_output_1 = peer_5_phone.produce_setup_phone_output_1().unwrap();
+    let peer_1_setup_phone_output_1 = peer_1_phone.produce_setup_phone_output_1().or_err()?;
+    let peer_2_setup_phone_output_1 = peer_2_phone.produce_setup_phone_output_1().or_err()?;
+    let peer_3_setup_phone_output_1 = peer_3_phone.produce_setup_phone_output_1().or_err()?;
+    let peer_4_setup_phone_output_1 = peer_4_phone.produce_setup_phone_output_1().or_err()?;
+    let peer_5_setup_phone_output_1 = peer_5_phone.produce_setup_phone_output_1().or_err()?;
     debug!("Phones produced SetupPhoneOutput1 to give SAR service payment info to peers.");
 
     //////////////////////////////
@@ -753,25 +755,25 @@ pub fn run(
     debug!("Step 5:");
     peer_1
         .consume_setup_phone_output_1(peer_1_setup_phone_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_phone_output_1(peer_2_setup_phone_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_phone_output_1(peer_3_setup_phone_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_phone_output_1(peer_4_setup_phone_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_phone_output_1(peer_5_setup_phone_output_1)
-        .unwrap();
+        .or_err()?;
     debug!("Peers received SAR service payment info.");
-    let peer_1_setup_phone_input_2 = peer_1.produce_setup_phone_input_2().unwrap();
-    let peer_2_setup_phone_input_2 = peer_2.produce_setup_phone_input_2().unwrap();
-    let peer_3_setup_phone_input_2 = peer_3.produce_setup_phone_input_2().unwrap();
-    let peer_4_setup_phone_input_2 = peer_4.produce_setup_phone_input_2().unwrap();
-    let peer_5_setup_phone_input_2 = peer_5.produce_setup_phone_input_2().unwrap();
+    let peer_1_setup_phone_input_2 = peer_1.produce_setup_phone_input_2().or_err()?;
+    let peer_2_setup_phone_input_2 = peer_2.produce_setup_phone_input_2().or_err()?;
+    let peer_3_setup_phone_input_2 = peer_3.produce_setup_phone_input_2().or_err()?;
+    let peer_4_setup_phone_input_2 = peer_4.produce_setup_phone_input_2().or_err()?;
+    let peer_5_setup_phone_input_2 = peer_5.produce_setup_phone_input_2().or_err()?;
 
     debug!("Peers produced SetupPhoneInput2 to give SAR service payment receipts to their phones.");
 
@@ -781,30 +783,30 @@ pub fn run(
     debug!("Step 6:");
     peer_1_phone
         .consume_setup_phone_input_2(peer_1_setup_phone_input_2)
-        .unwrap();
+        .or_err()?;
     peer_2_phone
         .consume_setup_phone_input_2(peer_2_setup_phone_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_phone
         .consume_setup_phone_input_2(peer_3_setup_phone_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_phone
         .consume_setup_phone_input_2(peer_4_setup_phone_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_phone
         .consume_setup_phone_input_2(peer_5_setup_phone_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("Phones received SAR service payment receipts.");
     let peer_1_parcel_to_be_sent_setup_phone_sar_message_2 =
-        peer_1_phone.produce_setup_phone_sar_message_2().unwrap();
+        peer_1_phone.produce_setup_phone_sar_message_2().or_err()?;
     let peer_2_parcel_to_be_sent_setup_phone_sar_message_2 =
-        peer_2_phone.produce_setup_phone_sar_message_2().unwrap();
+        peer_2_phone.produce_setup_phone_sar_message_2().or_err()?;
     let peer_3_parcel_to_be_sent_setup_phone_sar_message_2 =
-        peer_3_phone.produce_setup_phone_sar_message_2().unwrap();
+        peer_3_phone.produce_setup_phone_sar_message_2().or_err()?;
     let peer_4_parcel_to_be_sent_setup_phone_sar_message_2 =
-        peer_4_phone.produce_setup_phone_sar_message_2().unwrap();
+        peer_4_phone.produce_setup_phone_sar_message_2().or_err()?;
     let peer_5_parcel_to_be_sent_setup_phone_sar_message_2 =
-        peer_5_phone.produce_setup_phone_sar_message_2().unwrap();
+        peer_5_phone.produce_setup_phone_sar_message_2().or_err()?;
     debug!("Phones produced SetupPhoneSarMessage2 to share service payment receipts with SARs.");
 
     //////////////////////////////
@@ -815,103 +817,103 @@ pub fn run(
         .consume_setup_phone_sar_message_2(
             peer_1_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_1_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_1_sar_2
         .consume_setup_phone_sar_message_2(
             peer_1_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_1_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_1
         .consume_setup_phone_sar_message_2(
             peer_2_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_2_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_2
         .consume_setup_phone_sar_message_2(
             peer_2_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_2_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_1
         .consume_setup_phone_sar_message_2(
             peer_3_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_3_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_2
         .consume_setup_phone_sar_message_2(
             peer_3_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_3_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_1
         .consume_setup_phone_sar_message_2(
             peer_4_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_4_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_2
         .consume_setup_phone_sar_message_2(
             peer_4_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_4_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_1
         .consume_setup_phone_sar_message_2(
             peer_5_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_5_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_2
         .consume_setup_phone_sar_message_2(
             peer_5_parcel_to_be_sent_setup_phone_sar_message_2
                 .look_for_message(&peer_5_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("SARs received phones' service payment receipts.");
     let peer_1_sar_1_setup_sar_phone_message_2 =
-        peer_1_sar_1.produce_setup_sar_phone_message_2().unwrap();
+        peer_1_sar_1.produce_setup_sar_phone_message_2().or_err()?;
     let peer_1_sar_2_setup_sar_phone_message_2 =
-        peer_1_sar_2.produce_setup_sar_phone_message_2().unwrap();
+        peer_1_sar_2.produce_setup_sar_phone_message_2().or_err()?;
     let peer_2_sar_1_setup_sar_phone_message_2 =
-        peer_2_sar_1.produce_setup_sar_phone_message_2().unwrap();
+        peer_2_sar_1.produce_setup_sar_phone_message_2().or_err()?;
     let peer_2_sar_2_setup_sar_phone_message_2 =
-        peer_2_sar_2.produce_setup_sar_phone_message_2().unwrap();
+        peer_2_sar_2.produce_setup_sar_phone_message_2().or_err()?;
     let peer_3_sar_1_setup_sar_phone_message_2 =
-        peer_3_sar_1.produce_setup_sar_phone_message_2().unwrap();
+        peer_3_sar_1.produce_setup_sar_phone_message_2().or_err()?;
     let peer_3_sar_2_setup_sar_phone_message_2 =
-        peer_3_sar_2.produce_setup_sar_phone_message_2().unwrap();
+        peer_3_sar_2.produce_setup_sar_phone_message_2().or_err()?;
     let peer_4_sar_1_setup_sar_phone_message_2 =
-        peer_4_sar_1.produce_setup_sar_phone_message_2().unwrap();
+        peer_4_sar_1.produce_setup_sar_phone_message_2().or_err()?;
     let peer_4_sar_2_setup_sar_phone_message_2 =
-        peer_4_sar_2.produce_setup_sar_phone_message_2().unwrap();
+        peer_4_sar_2.produce_setup_sar_phone_message_2().or_err()?;
     let peer_5_sar_1_setup_sar_phone_message_2 =
-        peer_5_sar_1.produce_setup_sar_phone_message_2().unwrap();
+        peer_5_sar_1.produce_setup_sar_phone_message_2().or_err()?;
     let peer_5_sar_2_setup_sar_phone_message_2 =
-        peer_5_sar_2.produce_setup_sar_phone_message_2().unwrap();
+        peer_5_sar_2.produce_setup_sar_phone_message_2().or_err()?;
     debug!("SARs produced SetupSarPhoneMessage2 to acknowledge SAR service initialization.");
 
     //////////////////////////////
@@ -970,25 +972,25 @@ pub fn run(
     ]);
     peer_1_phone
         .consume_setup_sar_phone_message_2(peer_1_parcel_to_be_received_setup_sar_phone_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_phone
         .consume_setup_sar_phone_message_2(peer_2_parcel_to_be_received_setup_sar_phone_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_phone
         .consume_setup_sar_phone_message_2(peer_3_parcel_to_be_received_setup_sar_phone_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_phone
         .consume_setup_sar_phone_message_2(peer_4_parcel_to_be_received_setup_sar_phone_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_phone
         .consume_setup_sar_phone_message_2(peer_5_parcel_to_be_received_setup_sar_phone_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Phones receive SARs' acknowledge of SAR service initialization.");
-    let peer_1_setup_phone_output_2 = peer_1_phone.produce_setup_phone_output_2().unwrap();
-    let peer_2_setup_phone_output_2 = peer_2_phone.produce_setup_phone_output_2().unwrap();
-    let peer_3_setup_phone_output_2 = peer_3_phone.produce_setup_phone_output_2().unwrap();
-    let peer_4_setup_phone_output_2 = peer_4_phone.produce_setup_phone_output_2().unwrap();
-    let peer_5_setup_phone_output_2 = peer_5_phone.produce_setup_phone_output_2().unwrap();
+    let peer_1_setup_phone_output_2 = peer_1_phone.produce_setup_phone_output_2().or_err()?;
+    let peer_2_setup_phone_output_2 = peer_2_phone.produce_setup_phone_output_2().or_err()?;
+    let peer_3_setup_phone_output_2 = peer_3_phone.produce_setup_phone_output_2().or_err()?;
+    let peer_4_setup_phone_output_2 = peer_4_phone.produce_setup_phone_output_2().or_err()?;
+    let peer_5_setup_phone_output_2 = peer_5_phone.produce_setup_phone_output_2().or_err()?;
     debug!("Phones produced SetupPhoneOutput2 to notify peers of SAR service initialization.");
 
     /////////////////////////////
@@ -997,27 +999,27 @@ pub fn run(
     debug!("Step 9:");
     peer_1
         .consume_setup_phone_output_2(peer_1_setup_phone_output_2)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_phone_output_2(peer_2_setup_phone_output_2)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_phone_output_2(peer_3_setup_phone_output_2)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_phone_output_2(peer_4_setup_phone_output_2)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_phone_output_2(peer_5_setup_phone_output_2)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers know about SAR service initialization.");
 
-    let peer_1_setup_iso_input_1 = peer_1.produce_setup_iso_input_1().unwrap();
-    let peer_2_setup_iso_input_1 = peer_2.produce_setup_iso_input_1().unwrap();
-    let peer_3_setup_iso_input_1 = peer_3.produce_setup_iso_input_1().unwrap();
-    let peer_4_setup_iso_input_1 = peer_4.produce_setup_iso_input_1().unwrap();
-    let peer_5_setup_iso_input_1 = peer_5.produce_setup_iso_input_1().unwrap();
+    let peer_1_setup_iso_input_1 = peer_1.produce_setup_iso_input_1().or_err()?;
+    let peer_2_setup_iso_input_1 = peer_2.produce_setup_iso_input_1().or_err()?;
+    let peer_3_setup_iso_input_1 = peer_3.produce_setup_iso_input_1().or_err()?;
+    let peer_4_setup_iso_input_1 = peer_4.produce_setup_iso_input_1().or_err()?;
+    let peer_5_setup_iso_input_1 = peer_5.produce_setup_iso_input_1().or_err()?;
 
     debug!("Peers produced SetupIsoInput1s to initiate their ISOs.");
 
@@ -1027,30 +1029,30 @@ pub fn run(
     debug!("Step 10:");
     peer_1_iso
         .consume_setup_iso_input_1(peer_1_setup_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_iso_input_1(peer_2_setup_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_iso_input_1(peer_3_setup_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_iso_input_1(peer_4_setup_iso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_iso_input_1(peer_5_setup_iso_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs initialized.");
     let peer_1_setup_iso_boomlet_message_1 =
-        peer_1_iso.produce_setup_iso_boomlet_message_1().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_1().or_err()?;
     let peer_2_setup_iso_boomlet_message_1 =
-        peer_2_iso.produce_setup_iso_boomlet_message_1().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_1().or_err()?;
     let peer_3_setup_iso_boomlet_message_1 =
-        peer_3_iso.produce_setup_iso_boomlet_message_1().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_1().or_err()?;
     let peer_4_setup_iso_boomlet_message_1 =
-        peer_4_iso.produce_setup_iso_boomlet_message_1().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_1().or_err()?;
     let peer_5_setup_iso_boomlet_message_1 =
-        peer_5_iso.produce_setup_iso_boomlet_message_1().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_1().or_err()?;
     debug!("ISOs produced SetupIsoBoomletMessage1s to initiate Boomlets.");
 
     //////////////////////////////
@@ -1059,35 +1061,35 @@ pub fn run(
     debug!("Step 11:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_1(peer_1_setup_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_1(peer_2_setup_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_1(peer_3_setup_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_1(peer_4_setup_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_1(peer_5_setup_iso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets initialized.");
     let peer_1_setup_boomlet_iso_message_1 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_1 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_1 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_1 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_1 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletIsoMessage1 to start duress initialization.");
 
     //////////////////////////////
@@ -1096,25 +1098,25 @@ pub fn run(
     debug!("Step 12:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_1(peer_1_setup_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_1(peer_2_setup_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_1(peer_3_setup_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_1(peer_4_setup_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_1(peer_5_setup_boomlet_iso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received Boomlets messages to initialize duress.");
-    let peer_1_setup_iso_st_message_1 = peer_1_iso.produce_setup_iso_st_message_1().unwrap();
-    let peer_2_setup_iso_st_message_1 = peer_2_iso.produce_setup_iso_st_message_1().unwrap();
-    let peer_3_setup_iso_st_message_1 = peer_3_iso.produce_setup_iso_st_message_1().unwrap();
-    let peer_4_setup_iso_st_message_1 = peer_4_iso.produce_setup_iso_st_message_1().unwrap();
-    let peer_5_setup_iso_st_message_1 = peer_5_iso.produce_setup_iso_st_message_1().unwrap();
+    let peer_1_setup_iso_st_message_1 = peer_1_iso.produce_setup_iso_st_message_1().or_err()?;
+    let peer_2_setup_iso_st_message_1 = peer_2_iso.produce_setup_iso_st_message_1().or_err()?;
+    let peer_3_setup_iso_st_message_1 = peer_3_iso.produce_setup_iso_st_message_1().or_err()?;
+    let peer_4_setup_iso_st_message_1 = peer_4_iso.produce_setup_iso_st_message_1().or_err()?;
+    let peer_5_setup_iso_st_message_1 = peer_5_iso.produce_setup_iso_st_message_1().or_err()?;
     debug!("ISOs produced SetupIsoStMessage1 to give their Boomlets identity pubkey to their STs.");
 
     //////////////////////////////
@@ -1123,25 +1125,25 @@ pub fn run(
     debug!("Step 13:");
     peer_1_st
         .consume_setup_iso_st_message_1(peer_1_setup_iso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_iso_st_message_1(peer_2_setup_iso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_iso_st_message_1(peer_3_setup_iso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_iso_st_message_1(peer_4_setup_iso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_iso_st_message_1(peer_5_setup_iso_st_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("STs received Boomlets' identity pubkey.");
-    let peer_1_setup_st_iso_message_1 = peer_1_st.produce_setup_st_iso_message_1().unwrap();
-    let peer_2_setup_st_iso_message_1 = peer_2_st.produce_setup_st_iso_message_1().unwrap();
-    let peer_3_setup_st_iso_message_1 = peer_3_st.produce_setup_st_iso_message_1().unwrap();
-    let peer_4_setup_st_iso_message_1 = peer_4_st.produce_setup_st_iso_message_1().unwrap();
-    let peer_5_setup_st_iso_message_1 = peer_5_st.produce_setup_st_iso_message_1().unwrap();
+    let peer_1_setup_st_iso_message_1 = peer_1_st.produce_setup_st_iso_message_1().or_err()?;
+    let peer_2_setup_st_iso_message_1 = peer_2_st.produce_setup_st_iso_message_1().or_err()?;
+    let peer_3_setup_st_iso_message_1 = peer_3_st.produce_setup_st_iso_message_1().or_err()?;
+    let peer_4_setup_st_iso_message_1 = peer_4_st.produce_setup_st_iso_message_1().or_err()?;
+    let peer_5_setup_st_iso_message_1 = peer_5_st.produce_setup_st_iso_message_1().or_err()?;
     debug!(
         "STs produced SetupStIsoMessage1 to give their identity pubkey to their ISOs to give them to Boomlets."
     );
@@ -1152,30 +1154,30 @@ pub fn run(
     debug!("Step 14:");
     peer_1_iso
         .consume_setup_st_iso_message_1(peer_1_setup_st_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_st_iso_message_1(peer_2_setup_st_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_st_iso_message_1(peer_3_setup_st_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_st_iso_message_1(peer_4_setup_st_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_st_iso_message_1(peer_5_setup_st_iso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received STs' identity pubkey.");
     let peer_1_setup_iso_boomlet_message_2 =
-        peer_1_iso.produce_setup_iso_boomlet_message_2().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_2().or_err()?;
     let peer_2_setup_iso_boomlet_message_2 =
-        peer_2_iso.produce_setup_iso_boomlet_message_2().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_2().or_err()?;
     let peer_3_setup_iso_boomlet_message_2 =
-        peer_3_iso.produce_setup_iso_boomlet_message_2().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_2().or_err()?;
     let peer_4_setup_iso_boomlet_message_2 =
-        peer_4_iso.produce_setup_iso_boomlet_message_2().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_2().or_err()?;
     let peer_5_setup_iso_boomlet_message_2 =
-        peer_5_iso.produce_setup_iso_boomlet_message_2().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_2().or_err()?;
     debug!("ISOs produced SetupIsoBoomletMessage2 to give STs' identity pubkey to their Boomlets.");
 
     //////////////////////////////
@@ -1184,35 +1186,35 @@ pub fn run(
     debug!("Step 15:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_2(peer_1_setup_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_2(peer_2_setup_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_2(peer_3_setup_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_2(peer_4_setup_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_2(peer_5_setup_iso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received STs' identity pubkey.");
     let peer_1_setup_boomlet_iso_message_2 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_2 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_2 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_2 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_2 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletIsoMessage2 to give duress check space with nonce to ISOs."
     );
@@ -1223,25 +1225,25 @@ pub fn run(
     debug!("Step 16:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_2(peer_1_setup_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_2(peer_2_setup_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_2(peer_3_setup_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_2(peer_4_setup_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_2(peer_5_setup_boomlet_iso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received duress check space with nonce.");
-    let peer_1_setup_iso_st_message_2 = peer_1_iso.produce_setup_iso_st_message_2().unwrap();
-    let peer_2_setup_iso_st_message_2 = peer_2_iso.produce_setup_iso_st_message_2().unwrap();
-    let peer_3_setup_iso_st_message_2 = peer_3_iso.produce_setup_iso_st_message_2().unwrap();
-    let peer_4_setup_iso_st_message_2 = peer_4_iso.produce_setup_iso_st_message_2().unwrap();
-    let peer_5_setup_iso_st_message_2 = peer_5_iso.produce_setup_iso_st_message_2().unwrap();
+    let peer_1_setup_iso_st_message_2 = peer_1_iso.produce_setup_iso_st_message_2().or_err()?;
+    let peer_2_setup_iso_st_message_2 = peer_2_iso.produce_setup_iso_st_message_2().or_err()?;
+    let peer_3_setup_iso_st_message_2 = peer_3_iso.produce_setup_iso_st_message_2().or_err()?;
+    let peer_4_setup_iso_st_message_2 = peer_4_iso.produce_setup_iso_st_message_2().or_err()?;
+    let peer_5_setup_iso_st_message_2 = peer_5_iso.produce_setup_iso_st_message_2().or_err()?;
     debug!("ISOs produced SetupIsoStMessage2 to give duress check space with nonce to their STs.");
 
     //////////////////////////////
@@ -1250,25 +1252,25 @@ pub fn run(
     debug!("Step 17:");
     peer_1_st
         .consume_setup_iso_st_message_2(peer_1_setup_iso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_iso_st_message_2(peer_2_setup_iso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_iso_st_message_2(peer_3_setup_iso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_iso_st_message_2(peer_4_setup_iso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_iso_st_message_2(peer_5_setup_iso_st_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("STs received duress check space with nonce.");
-    let peer_1_setup_st_output_1 = peer_1_st.produce_setup_st_output_1().unwrap();
-    let peer_2_setup_st_output_1 = peer_2_st.produce_setup_st_output_1().unwrap();
-    let peer_3_setup_st_output_1 = peer_3_st.produce_setup_st_output_1().unwrap();
-    let peer_4_setup_st_output_1 = peer_4_st.produce_setup_st_output_1().unwrap();
-    let peer_5_setup_st_output_1 = peer_5_st.produce_setup_st_output_1().unwrap();
+    let peer_1_setup_st_output_1 = peer_1_st.produce_setup_st_output_1().or_err()?;
+    let peer_2_setup_st_output_1 = peer_2_st.produce_setup_st_output_1().or_err()?;
+    let peer_3_setup_st_output_1 = peer_3_st.produce_setup_st_output_1().or_err()?;
+    let peer_4_setup_st_output_1 = peer_4_st.produce_setup_st_output_1().or_err()?;
+    let peer_5_setup_st_output_1 = peer_5_st.produce_setup_st_output_1().or_err()?;
     debug!("STs produced SetupStOutput1 to give duress check space with nonce to their peers.");
 
     //////////////////////////////
@@ -1277,26 +1279,26 @@ pub fn run(
     debug!("Step 18:");
     peer_1
         .consume_setup_st_output_1(peer_1_setup_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_st_output_1(peer_2_setup_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_st_output_1(peer_3_setup_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_st_output_1(peer_4_setup_st_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_st_output_1(peer_5_setup_st_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received duress check space.");
-    let peer_1_setup_st_input_1 = peer_1.produce_setup_st_input_1().unwrap();
-    let peer_2_setup_st_input_1 = peer_2.produce_setup_st_input_1().unwrap();
-    let peer_3_setup_st_input_1 = peer_3.produce_setup_st_input_1().unwrap();
-    let peer_4_setup_st_input_1 = peer_4.produce_setup_st_input_1().unwrap();
-    let peer_5_setup_st_input_1 = peer_5.produce_setup_st_input_1().unwrap();
+    let peer_1_setup_st_input_1 = peer_1.produce_setup_st_input_1().or_err()?;
+    let peer_2_setup_st_input_1 = peer_2.produce_setup_st_input_1().or_err()?;
+    let peer_3_setup_st_input_1 = peer_3.produce_setup_st_input_1().or_err()?;
+    let peer_4_setup_st_input_1 = peer_4.produce_setup_st_input_1().or_err()?;
+    let peer_5_setup_st_input_1 = peer_5.produce_setup_st_input_1().or_err()?;
 
     debug!("Peers produced SetupStInput1 to give their duress signal index to their ISOs.");
 
@@ -1306,25 +1308,25 @@ pub fn run(
     debug!("Step 19:");
     peer_1_st
         .consume_setup_st_input_1(peer_1_setup_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_st_input_1(peer_2_setup_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_st_input_1(peer_3_setup_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_st_input_1(peer_4_setup_st_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_st_input_1(peer_5_setup_st_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("STs received duress signal index with nonce.");
-    let peer_1_setup_st_iso_message_2 = peer_1_st.produce_setup_st_iso_message_2().unwrap();
-    let peer_2_setup_st_iso_message_2 = peer_2_st.produce_setup_st_iso_message_2().unwrap();
-    let peer_3_setup_st_iso_message_2 = peer_3_st.produce_setup_st_iso_message_2().unwrap();
-    let peer_4_setup_st_iso_message_2 = peer_4_st.produce_setup_st_iso_message_2().unwrap();
-    let peer_5_setup_st_iso_message_2 = peer_5_st.produce_setup_st_iso_message_2().unwrap();
+    let peer_1_setup_st_iso_message_2 = peer_1_st.produce_setup_st_iso_message_2().or_err()?;
+    let peer_2_setup_st_iso_message_2 = peer_2_st.produce_setup_st_iso_message_2().or_err()?;
+    let peer_3_setup_st_iso_message_2 = peer_3_st.produce_setup_st_iso_message_2().or_err()?;
+    let peer_4_setup_st_iso_message_2 = peer_4_st.produce_setup_st_iso_message_2().or_err()?;
+    let peer_5_setup_st_iso_message_2 = peer_5_st.produce_setup_st_iso_message_2().or_err()?;
     debug!(
         "STs produced SetupStIsoMessage2 to give peers' duress signal index with nonce to ISOs."
     );
@@ -1335,30 +1337,30 @@ pub fn run(
     debug!("Step 20:");
     peer_1_iso
         .consume_setup_st_iso_message_2(peer_1_setup_st_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_st_iso_message_2(peer_2_setup_st_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_st_iso_message_2(peer_3_setup_st_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_st_iso_message_2(peer_4_setup_st_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_st_iso_message_2(peer_5_setup_st_iso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received duress signal index with nonce.");
     let peer_1_setup_iso_boomlet_message_3 =
-        peer_1_iso.produce_setup_iso_boomlet_message_3().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_3().or_err()?;
     let peer_2_setup_iso_boomlet_message_3 =
-        peer_2_iso.produce_setup_iso_boomlet_message_3().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_3().or_err()?;
     let peer_3_setup_iso_boomlet_message_3 =
-        peer_3_iso.produce_setup_iso_boomlet_message_3().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_3().or_err()?;
     let peer_4_setup_iso_boomlet_message_3 =
-        peer_4_iso.produce_setup_iso_boomlet_message_3().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_3().or_err()?;
     let peer_5_setup_iso_boomlet_message_3 =
-        peer_5_iso.produce_setup_iso_boomlet_message_3().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_3().or_err()?;
     debug!(
         "ISOs produced SetupIsoBoomletMessage3 to give duress signal index with nonce their Boomlets."
     );
@@ -1369,37 +1371,37 @@ pub fn run(
     debug!("Step 21:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_3(peer_1_setup_iso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_3(peer_2_setup_iso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_3(peer_3_setup_iso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_3(peer_4_setup_iso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_3(peer_5_setup_iso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets received duress signal index with nonce and derived duress consent set from it."
     );
     let peer_1_setup_boomlet_iso_message_3 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_3 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_3 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_3 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_3 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletIsoMessage3 to give duress check space with nonce to ISOs."
     );
@@ -1410,25 +1412,25 @@ pub fn run(
     debug!("Step 22:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_3(peer_1_setup_boomlet_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_3(peer_2_setup_boomlet_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_3(peer_3_setup_boomlet_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_3(peer_4_setup_boomlet_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_3(peer_5_setup_boomlet_iso_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received duress check space with nonce.");
-    let peer_1_setup_iso_st_message_3 = peer_1_iso.produce_setup_iso_st_message_3().unwrap();
-    let peer_2_setup_iso_st_message_3 = peer_2_iso.produce_setup_iso_st_message_3().unwrap();
-    let peer_3_setup_iso_st_message_3 = peer_3_iso.produce_setup_iso_st_message_3().unwrap();
-    let peer_4_setup_iso_st_message_3 = peer_4_iso.produce_setup_iso_st_message_3().unwrap();
-    let peer_5_setup_iso_st_message_3 = peer_5_iso.produce_setup_iso_st_message_3().unwrap();
+    let peer_1_setup_iso_st_message_3 = peer_1_iso.produce_setup_iso_st_message_3().or_err()?;
+    let peer_2_setup_iso_st_message_3 = peer_2_iso.produce_setup_iso_st_message_3().or_err()?;
+    let peer_3_setup_iso_st_message_3 = peer_3_iso.produce_setup_iso_st_message_3().or_err()?;
+    let peer_4_setup_iso_st_message_3 = peer_4_iso.produce_setup_iso_st_message_3().or_err()?;
+    let peer_5_setup_iso_st_message_3 = peer_5_iso.produce_setup_iso_st_message_3().or_err()?;
     debug!("ISOs produced SetupIsoStMessage3 to give duress check space with nonce to their STs.");
 
     //////////////////////////////
@@ -1437,25 +1439,25 @@ pub fn run(
     debug!("Step 23:");
     peer_1_st
         .consume_setup_iso_st_message_3(peer_1_setup_iso_st_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_iso_st_message_3(peer_2_setup_iso_st_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_iso_st_message_3(peer_3_setup_iso_st_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_iso_st_message_3(peer_4_setup_iso_st_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_iso_st_message_3(peer_5_setup_iso_st_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("STs received duress check space with nonce.");
-    let peer_1_setup_st_output_2 = peer_1_st.produce_setup_st_output_2().unwrap();
-    let peer_2_setup_st_output_2 = peer_2_st.produce_setup_st_output_2().unwrap();
-    let peer_3_setup_st_output_2 = peer_3_st.produce_setup_st_output_2().unwrap();
-    let peer_4_setup_st_output_2 = peer_4_st.produce_setup_st_output_2().unwrap();
-    let peer_5_setup_st_output_2 = peer_5_st.produce_setup_st_output_2().unwrap();
+    let peer_1_setup_st_output_2 = peer_1_st.produce_setup_st_output_2().or_err()?;
+    let peer_2_setup_st_output_2 = peer_2_st.produce_setup_st_output_2().or_err()?;
+    let peer_3_setup_st_output_2 = peer_3_st.produce_setup_st_output_2().or_err()?;
+    let peer_4_setup_st_output_2 = peer_4_st.produce_setup_st_output_2().or_err()?;
+    let peer_5_setup_st_output_2 = peer_5_st.produce_setup_st_output_2().or_err()?;
     debug!("STs produced SetupStOutput2 to give duress check space with nonce to their peers.");
 
     //////////////////////////////
@@ -1464,27 +1466,27 @@ pub fn run(
     debug!("Step 24:");
     peer_1
         .consume_setup_st_output_2(peer_1_setup_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_st_output_2(peer_2_setup_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_st_output_2(peer_3_setup_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_st_output_2(peer_4_setup_st_output_2)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_st_output_2(peer_5_setup_st_output_2)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received duress check space.");
 
-    let peer_1_setup_st_input_2 = peer_1.produce_setup_st_input_2().unwrap();
-    let peer_2_setup_st_input_2 = peer_2.produce_setup_st_input_2().unwrap();
-    let peer_3_setup_st_input_2 = peer_3.produce_setup_st_input_2().unwrap();
-    let peer_4_setup_st_input_2 = peer_4.produce_setup_st_input_2().unwrap();
-    let peer_5_setup_st_input_2 = peer_5.produce_setup_st_input_2().unwrap();
+    let peer_1_setup_st_input_2 = peer_1.produce_setup_st_input_2().or_err()?;
+    let peer_2_setup_st_input_2 = peer_2.produce_setup_st_input_2().or_err()?;
+    let peer_3_setup_st_input_2 = peer_3.produce_setup_st_input_2().or_err()?;
+    let peer_4_setup_st_input_2 = peer_4.produce_setup_st_input_2().or_err()?;
+    let peer_5_setup_st_input_2 = peer_5.produce_setup_st_input_2().or_err()?;
     debug!("Peers produced SetupStInput2 to give their duress signal index to their ISOs.");
 
     //////////////////////////////
@@ -1493,25 +1495,25 @@ pub fn run(
     debug!("Step 25:");
     peer_1_st
         .consume_setup_st_input_2(peer_1_setup_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_st_input_2(peer_2_setup_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_st_input_2(peer_3_setup_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_st_input_2(peer_4_setup_st_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_st_input_2(peer_5_setup_st_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("STs received duress signal index with nonce.");
-    let peer_1_setup_st_iso_message_3 = peer_1_st.produce_setup_st_iso_message_3().unwrap();
-    let peer_2_setup_st_iso_message_3 = peer_2_st.produce_setup_st_iso_message_3().unwrap();
-    let peer_3_setup_st_iso_message_3 = peer_3_st.produce_setup_st_iso_message_3().unwrap();
-    let peer_4_setup_st_iso_message_3 = peer_4_st.produce_setup_st_iso_message_3().unwrap();
-    let peer_5_setup_st_iso_message_3 = peer_5_st.produce_setup_st_iso_message_3().unwrap();
+    let peer_1_setup_st_iso_message_3 = peer_1_st.produce_setup_st_iso_message_3().or_err()?;
+    let peer_2_setup_st_iso_message_3 = peer_2_st.produce_setup_st_iso_message_3().or_err()?;
+    let peer_3_setup_st_iso_message_3 = peer_3_st.produce_setup_st_iso_message_3().or_err()?;
+    let peer_4_setup_st_iso_message_3 = peer_4_st.produce_setup_st_iso_message_3().or_err()?;
+    let peer_5_setup_st_iso_message_3 = peer_5_st.produce_setup_st_iso_message_3().or_err()?;
     debug!(
         "STs produced SetupStIsoMessage3 to give peers' duress signal index with nonce to ISOs."
     );
@@ -1522,30 +1524,30 @@ pub fn run(
     debug!("Step 26:");
     peer_1_iso
         .consume_setup_st_iso_message_3(peer_1_setup_st_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_st_iso_message_3(peer_2_setup_st_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_st_iso_message_3(peer_3_setup_st_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_st_iso_message_3(peer_4_setup_st_iso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_st_iso_message_3(peer_5_setup_st_iso_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received duress signal index with nonce.");
     let peer_1_setup_iso_boomlet_message_4 =
-        peer_1_iso.produce_setup_iso_boomlet_message_4().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_4().or_err()?;
     let peer_2_setup_iso_boomlet_message_4 =
-        peer_2_iso.produce_setup_iso_boomlet_message_4().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_4().or_err()?;
     let peer_3_setup_iso_boomlet_message_4 =
-        peer_3_iso.produce_setup_iso_boomlet_message_4().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_4().or_err()?;
     let peer_4_setup_iso_boomlet_message_4 =
-        peer_4_iso.produce_setup_iso_boomlet_message_4().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_4().or_err()?;
     let peer_5_setup_iso_boomlet_message_4 =
-        peer_5_iso.produce_setup_iso_boomlet_message_4().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_4().or_err()?;
     debug!(
         "ISOs produced SetupIsoBoomletMessage4 to give duress signal index with nonce their Boomlets."
     );
@@ -1556,35 +1558,35 @@ pub fn run(
     debug!("Step 27:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_4(peer_1_setup_iso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_4(peer_2_setup_iso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_4(peer_3_setup_iso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_4(peer_4_setup_iso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_4(peer_5_setup_iso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received duress signal index with nonce and derived duress signal from it.");
     let peer_1_setup_boomlet_iso_message_4 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_4 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_4 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_4 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_4 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_4()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletIsoMessage4 to notify ISOs that they are closed now.");
 
     //////////////////////////////
@@ -1593,25 +1595,25 @@ pub fn run(
     debug!("Step 28:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_4(peer_1_setup_boomlet_iso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_4(peer_2_setup_boomlet_iso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_4(peer_3_setup_boomlet_iso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_4(peer_4_setup_boomlet_iso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_4(peer_5_setup_boomlet_iso_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs know their Boomlets are closed.");
-    let peer_1_setup_iso_output_1 = peer_1_iso.produce_setup_iso_output_1().unwrap();
-    let peer_2_setup_iso_output_1 = peer_2_iso.produce_setup_iso_output_1().unwrap();
-    let peer_3_setup_iso_output_1 = peer_3_iso.produce_setup_iso_output_1().unwrap();
-    let peer_4_setup_iso_output_1 = peer_4_iso.produce_setup_iso_output_1().unwrap();
-    let peer_5_setup_iso_output_1 = peer_5_iso.produce_setup_iso_output_1().unwrap();
+    let peer_1_setup_iso_output_1 = peer_1_iso.produce_setup_iso_output_1().or_err()?;
+    let peer_2_setup_iso_output_1 = peer_2_iso.produce_setup_iso_output_1().or_err()?;
+    let peer_3_setup_iso_output_1 = peer_3_iso.produce_setup_iso_output_1().or_err()?;
+    let peer_4_setup_iso_output_1 = peer_4_iso.produce_setup_iso_output_1().or_err()?;
+    let peer_5_setup_iso_output_1 = peer_5_iso.produce_setup_iso_output_1().or_err()?;
     debug!("ISOs produced SetupIsoOutput1 to signal to peers that Boomlets are now closed.");
 
     //////////////////////////////
@@ -1620,26 +1622,26 @@ pub fn run(
     debug!("Step 29:");
     peer_1
         .consume_setup_iso_output_1(peer_1_setup_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_iso_output_1(peer_2_setup_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_iso_output_1(peer_3_setup_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_iso_output_1(peer_4_setup_iso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_iso_output_1(peer_5_setup_iso_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers are notified that their Boomlets are closed.");
-    let peer_1_setup_niso_input_1 = peer_1.produce_setup_niso_input_1().unwrap();
-    let peer_2_setup_niso_input_1 = peer_2.produce_setup_niso_input_1().unwrap();
-    let peer_3_setup_niso_input_1 = peer_3.produce_setup_niso_input_1().unwrap();
-    let peer_4_setup_niso_input_1 = peer_4.produce_setup_niso_input_1().unwrap();
-    let peer_5_setup_niso_input_1 = peer_5.produce_setup_niso_input_1().unwrap();
+    let peer_1_setup_niso_input_1 = peer_1.produce_setup_niso_input_1().or_err()?;
+    let peer_2_setup_niso_input_1 = peer_2.produce_setup_niso_input_1().or_err()?;
+    let peer_3_setup_niso_input_1 = peer_3.produce_setup_niso_input_1().or_err()?;
+    let peer_4_setup_niso_input_1 = peer_4.produce_setup_niso_input_1().or_err()?;
+    let peer_5_setup_niso_input_1 = peer_5.produce_setup_niso_input_1().or_err()?;
 
     debug!(
         "Peers produced SetupNisoInput1s to pass their Bitcoin Core credentials to NISOs to initiate them."
@@ -1651,30 +1653,35 @@ pub fn run(
     debug!("Step 30:");
     peer_1_niso
         .consume_setup_niso_input_1(peer_1_setup_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_input_1(peer_2_setup_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_input_1(peer_3_setup_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_input_1(peer_4_setup_niso_input_1)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_input_1(peer_5_setup_niso_input_1)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs initialized.");
-    let peer_1_setup_niso_boomlet_message_1 =
-        peer_1_niso.produce_setup_niso_boomlet_message_1().unwrap();
-    let peer_2_setup_niso_boomlet_message_1 =
-        peer_2_niso.produce_setup_niso_boomlet_message_1().unwrap();
-    let peer_3_setup_niso_boomlet_message_1 =
-        peer_3_niso.produce_setup_niso_boomlet_message_1().unwrap();
-    let peer_4_setup_niso_boomlet_message_1 =
-        peer_4_niso.produce_setup_niso_boomlet_message_1().unwrap();
-    let peer_5_setup_niso_boomlet_message_1 =
-        peer_5_niso.produce_setup_niso_boomlet_message_1().unwrap();
+    let peer_1_setup_niso_boomlet_message_1 = peer_1_niso
+        .produce_setup_niso_boomlet_message_1()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_1 = peer_2_niso
+        .produce_setup_niso_boomlet_message_1()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_1 = peer_3_niso
+        .produce_setup_niso_boomlet_message_1()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_1 = peer_4_niso
+        .produce_setup_niso_boomlet_message_1()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_1 = peer_5_niso
+        .produce_setup_niso_boomlet_message_1()
+        .or_err()?;
     debug!("NISOs produced SetupNisoBoomletMessage1 to ask Boomlets for PeerIDs.");
 
     //////////////////////////////
@@ -1683,35 +1690,35 @@ pub fn run(
     debug!("Step 31:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_1(peer_1_setup_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_1(peer_2_setup_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_1(peer_3_setup_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_1(peer_4_setup_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_1(peer_5_setup_niso_boomlet_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets receive NISOs' requests for PeerID.");
     let peer_1_setup_boomlet_niso_message_1 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_1 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_1 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_1 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_1 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletNisoMessage1 to give their PeerIDs to NISOs.");
 
     //////////////////////////////
@@ -1720,25 +1727,25 @@ pub fn run(
     debug!("Step 32:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_1(peer_1_setup_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_1(peer_2_setup_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_1(peer_3_setup_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_1(peer_4_setup_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_1(peer_5_setup_boomlet_niso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received PeerIDs.");
-    let peer_1_setup_niso_st_message_1 = peer_1_niso.produce_setup_niso_st_message_1().unwrap();
-    let peer_2_setup_niso_st_message_1 = peer_2_niso.produce_setup_niso_st_message_1().unwrap();
-    let peer_3_setup_niso_st_message_1 = peer_3_niso.produce_setup_niso_st_message_1().unwrap();
-    let peer_4_setup_niso_st_message_1 = peer_4_niso.produce_setup_niso_st_message_1().unwrap();
-    let peer_5_setup_niso_st_message_1 = peer_5_niso.produce_setup_niso_st_message_1().unwrap();
+    let peer_1_setup_niso_st_message_1 = peer_1_niso.produce_setup_niso_st_message_1().or_err()?;
+    let peer_2_setup_niso_st_message_1 = peer_2_niso.produce_setup_niso_st_message_1().or_err()?;
+    let peer_3_setup_niso_st_message_1 = peer_3_niso.produce_setup_niso_st_message_1().or_err()?;
+    let peer_4_setup_niso_st_message_1 = peer_4_niso.produce_setup_niso_st_message_1().or_err()?;
+    let peer_5_setup_niso_st_message_1 = peer_5_niso.produce_setup_niso_st_message_1().or_err()?;
     debug!("NISOs produced SetupNisoStMessage2 to give PeerID to STs.");
 
     /////////////////////////////
@@ -1747,25 +1754,25 @@ pub fn run(
     debug!("Step 33:");
     peer_1_st
         .consume_setup_niso_st_message_1(peer_1_setup_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_niso_st_message_1(peer_2_setup_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_niso_st_message_1(peer_3_setup_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_niso_st_message_1(peer_4_setup_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_niso_st_message_1(peer_5_setup_niso_st_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("STs received PeerID.");
-    let peer_1_setup_st_output_3 = peer_1_st.produce_setup_st_output_3().unwrap();
-    let peer_2_setup_st_output_3 = peer_2_st.produce_setup_st_output_3().unwrap();
-    let peer_3_setup_st_output_3 = peer_3_st.produce_setup_st_output_3().unwrap();
-    let peer_4_setup_st_output_3 = peer_4_st.produce_setup_st_output_3().unwrap();
-    let peer_5_setup_st_output_3 = peer_5_st.produce_setup_st_output_3().unwrap();
+    let peer_1_setup_st_output_3 = peer_1_st.produce_setup_st_output_3().or_err()?;
+    let peer_2_setup_st_output_3 = peer_2_st.produce_setup_st_output_3().or_err()?;
+    let peer_3_setup_st_output_3 = peer_3_st.produce_setup_st_output_3().or_err()?;
+    let peer_4_setup_st_output_3 = peer_4_st.produce_setup_st_output_3().or_err()?;
+    let peer_5_setup_st_output_3 = peer_5_st.produce_setup_st_output_3().or_err()?;
     debug!("STs produced SetupStOutput3 to inform peers of their PeerAddresses.");
 
     //////////////////////////////
@@ -1774,37 +1781,37 @@ pub fn run(
     debug!("Step 34:");
     peer_1
         .consume_setup_st_output_3(peer_1_setup_st_output_3)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_st_output_3(peer_2_setup_st_output_3)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_st_output_3(peer_3_setup_st_output_3)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_st_output_3(peer_4_setup_st_output_3)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_st_output_3(peer_5_setup_st_output_3)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received PeerAddresses.");
 
     let mut peer_1_setup_user_peers_out_of_band_message_1 = peer_1
         .produce_setup_user_peers_out_of_band_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_user_peers_out_of_band_message_1 = peer_2
         .produce_setup_user_peers_out_of_band_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_user_peers_out_of_band_message_1 = peer_3
         .produce_setup_user_peers_out_of_band_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_user_peers_out_of_band_message_1 = peer_4
         .produce_setup_user_peers_out_of_band_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_user_peers_out_of_band_message_1 = peer_5
         .produce_setup_user_peers_out_of_band_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Peers produced SetupUserPeersOutOfBandMessage1 to give their PeerAddresses to other peers."
     );
@@ -1821,27 +1828,27 @@ pub fn run(
         .consume_setup_user_peers_out_of_band_message_1(
             setup_user_peers_out_of_band_message_1.clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_user_peers_out_of_band_message_1(
             setup_user_peers_out_of_band_message_1.clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_user_peers_out_of_band_message_1(
             setup_user_peers_out_of_band_message_1.clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_user_peers_out_of_band_message_1(
             setup_user_peers_out_of_band_message_1.clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_user_peers_out_of_band_message_1(
             setup_user_peers_out_of_band_message_1.clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!(
         "Peers consumed SetupUserPeersOutOfBandMessage1 to have other peers'  peer id and tor address."
     );
@@ -1851,11 +1858,11 @@ pub fn run(
     debug!("Step 35:");
     {}
     debug!("Peers received everyone's PeerAddresses.");
-    let peer_1_setup_niso_input_2 = peer_1.produce_setup_niso_input_2().unwrap();
-    let peer_2_setup_niso_input_2 = peer_2.produce_setup_niso_input_2().unwrap();
-    let peer_3_setup_niso_input_2 = peer_3.produce_setup_niso_input_2().unwrap();
-    let peer_4_setup_niso_input_2 = peer_4.produce_setup_niso_input_2().unwrap();
-    let peer_5_setup_niso_input_2 = peer_5.produce_setup_niso_input_2().unwrap();
+    let peer_1_setup_niso_input_2 = peer_1.produce_setup_niso_input_2().or_err()?;
+    let peer_2_setup_niso_input_2 = peer_2.produce_setup_niso_input_2().or_err()?;
+    let peer_3_setup_niso_input_2 = peer_3.produce_setup_niso_input_2().or_err()?;
+    let peer_4_setup_niso_input_2 = peer_4.produce_setup_niso_input_2().or_err()?;
+    let peer_5_setup_niso_input_2 = peer_5.produce_setup_niso_input_2().or_err()?;
 
     debug!(
         "Peers produced SetupNisoInput2 to give additional information (e.g. WtIds and everyone's PeerAddress) to their NISOs."
@@ -1867,30 +1874,35 @@ pub fn run(
     debug!("Step 36:");
     peer_1_niso
         .consume_setup_niso_input_2(peer_1_setup_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_input_2(peer_2_setup_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_input_2(peer_3_setup_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_input_2(peer_4_setup_niso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_input_2(peer_5_setup_niso_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received everyone's PeerAddresses.");
-    let peer_1_setup_niso_boomlet_message_2 =
-        peer_1_niso.produce_setup_niso_boomlet_message_2().unwrap();
-    let peer_2_setup_niso_boomlet_message_2 =
-        peer_2_niso.produce_setup_niso_boomlet_message_2().unwrap();
-    let peer_3_setup_niso_boomlet_message_2 =
-        peer_3_niso.produce_setup_niso_boomlet_message_2().unwrap();
-    let peer_4_setup_niso_boomlet_message_2 =
-        peer_4_niso.produce_setup_niso_boomlet_message_2().unwrap();
-    let peer_5_setup_niso_boomlet_message_2 =
-        peer_5_niso.produce_setup_niso_boomlet_message_2().unwrap();
+    let peer_1_setup_niso_boomlet_message_2 = peer_1_niso
+        .produce_setup_niso_boomlet_message_2()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_2 = peer_2_niso
+        .produce_setup_niso_boomlet_message_2()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_2 = peer_3_niso
+        .produce_setup_niso_boomlet_message_2()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_2 = peer_4_niso
+        .produce_setup_niso_boomlet_message_2()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_2 = peer_5_niso
+        .produce_setup_niso_boomlet_message_2()
+        .or_err()?;
     debug!("NISOs produced SetupNisoBoomletMessage2 to give Boomerang parameters to Boomlets.");
 
     //////////////////////////////
@@ -1899,35 +1911,35 @@ pub fn run(
     debug!("Step 37:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_2(peer_1_setup_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_2(peer_2_setup_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_2(peer_3_setup_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_2(peer_4_setup_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_2(peer_5_setup_niso_boomlet_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received Boomerang parameters.");
     let peer_1_setup_boomlet_niso_message_2 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_2 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_2 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_2 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_2 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage2 to give encrypted PeerIDs to NISOs for peer verification."
     );
@@ -1938,25 +1950,25 @@ pub fn run(
     debug!("Step 38:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_2(peer_1_setup_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_2(peer_2_setup_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_2(peer_3_setup_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_2(peer_4_setup_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_2(peer_5_setup_boomlet_niso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received encrypted PeerIDs.");
-    let peer_1_setup_niso_st_message_2 = peer_1_niso.produce_setup_niso_st_message_2().unwrap();
-    let peer_2_setup_niso_st_message_2 = peer_2_niso.produce_setup_niso_st_message_2().unwrap();
-    let peer_3_setup_niso_st_message_2 = peer_3_niso.produce_setup_niso_st_message_2().unwrap();
-    let peer_4_setup_niso_st_message_2 = peer_4_niso.produce_setup_niso_st_message_2().unwrap();
-    let peer_5_setup_niso_st_message_2 = peer_5_niso.produce_setup_niso_st_message_2().unwrap();
+    let peer_1_setup_niso_st_message_2 = peer_1_niso.produce_setup_niso_st_message_2().or_err()?;
+    let peer_2_setup_niso_st_message_2 = peer_2_niso.produce_setup_niso_st_message_2().or_err()?;
+    let peer_3_setup_niso_st_message_2 = peer_3_niso.produce_setup_niso_st_message_2().or_err()?;
+    let peer_4_setup_niso_st_message_2 = peer_4_niso.produce_setup_niso_st_message_2().or_err()?;
+    let peer_5_setup_niso_st_message_2 = peer_5_niso.produce_setup_niso_st_message_2().or_err()?;
     debug!(
         "NISOs produced SetupNisoStMessage2 to give encrypted PeerIDs to STs for peer verification."
     );
@@ -1967,25 +1979,25 @@ pub fn run(
     debug!("Step 39:");
     peer_1_st
         .consume_setup_niso_st_message_2(peer_1_setup_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_niso_st_message_2(peer_2_setup_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_niso_st_message_2(peer_3_setup_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_niso_st_message_2(peer_4_setup_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_niso_st_message_2(peer_5_setup_niso_st_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("STs received encrypted PeerIDs.");
-    let peer_1_setup_st_output_4 = peer_1_st.produce_setup_st_output_4().unwrap();
-    let peer_2_setup_st_output_4 = peer_2_st.produce_setup_st_output_4().unwrap();
-    let peer_3_setup_st_output_4 = peer_3_st.produce_setup_st_output_4().unwrap();
-    let peer_4_setup_st_output_4 = peer_4_st.produce_setup_st_output_4().unwrap();
-    let peer_5_setup_st_output_4 = peer_5_st.produce_setup_st_output_4().unwrap();
+    let peer_1_setup_st_output_4 = peer_1_st.produce_setup_st_output_4().or_err()?;
+    let peer_2_setup_st_output_4 = peer_2_st.produce_setup_st_output_4().or_err()?;
+    let peer_3_setup_st_output_4 = peer_3_st.produce_setup_st_output_4().or_err()?;
+    let peer_4_setup_st_output_4 = peer_4_st.produce_setup_st_output_4().or_err()?;
+    let peer_5_setup_st_output_4 = peer_5_st.produce_setup_st_output_4().or_err()?;
     debug!("STs produced SetupStOutput4 to ask peer for verification on PeerIDs.");
 
     //////////////////////////////
@@ -1994,26 +2006,26 @@ pub fn run(
     debug!("Step 40:");
     peer_1
         .consume_setup_st_output_4(peer_1_setup_st_output_4)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_st_output_4(peer_2_setup_st_output_4)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_st_output_4(peer_3_setup_st_output_4)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_st_output_4(peer_4_setup_st_output_4)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_st_output_4(peer_5_setup_st_output_4)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received verification request on PeerIDs.");
-    let peer_1_setup_st_input_3 = peer_1.produce_setup_st_input_3().unwrap();
-    let peer_2_setup_st_input_3 = peer_2.produce_setup_st_input_3().unwrap();
-    let peer_3_setup_st_input_3 = peer_3.produce_setup_st_input_3().unwrap();
-    let peer_4_setup_st_input_3 = peer_4.produce_setup_st_input_3().unwrap();
-    let peer_5_setup_st_input_3 = peer_5.produce_setup_st_input_3().unwrap();
+    let peer_1_setup_st_input_3 = peer_1.produce_setup_st_input_3().or_err()?;
+    let peer_2_setup_st_input_3 = peer_2.produce_setup_st_input_3().or_err()?;
+    let peer_3_setup_st_input_3 = peer_3.produce_setup_st_input_3().or_err()?;
+    let peer_4_setup_st_input_3 = peer_4.produce_setup_st_input_3().or_err()?;
+    let peer_5_setup_st_input_3 = peer_5.produce_setup_st_input_3().or_err()?;
 
     debug!("Peers produced SetupStInput3 to give their acknowledgement of PeerIDs to STs.");
 
@@ -2023,25 +2035,25 @@ pub fn run(
     debug!("Step 41:");
     peer_1_st
         .consume_setup_st_input_3(peer_1_setup_st_input_3)
-        .unwrap();
+        .or_err()?;
     peer_2_st
         .consume_setup_st_input_3(peer_2_setup_st_input_3)
-        .unwrap();
+        .or_err()?;
     peer_3_st
         .consume_setup_st_input_3(peer_3_setup_st_input_3)
-        .unwrap();
+        .or_err()?;
     peer_4_st
         .consume_setup_st_input_3(peer_4_setup_st_input_3)
-        .unwrap();
+        .or_err()?;
     peer_5_st
         .consume_setup_st_input_3(peer_5_setup_st_input_3)
-        .unwrap();
+        .or_err()?;
     debug!("STs received peers' acknowledgement of PeerIDs.");
-    let peer_1_setup_st_niso_message_1 = peer_1_st.produce_setup_st_niso_message_1().unwrap();
-    let peer_2_setup_st_niso_message_1 = peer_2_st.produce_setup_st_niso_message_1().unwrap();
-    let peer_3_setup_st_niso_message_1 = peer_3_st.produce_setup_st_niso_message_1().unwrap();
-    let peer_4_setup_st_niso_message_1 = peer_4_st.produce_setup_st_niso_message_1().unwrap();
-    let peer_5_setup_st_niso_message_1 = peer_5_st.produce_setup_st_niso_message_1().unwrap();
+    let peer_1_setup_st_niso_message_1 = peer_1_st.produce_setup_st_niso_message_1().or_err()?;
+    let peer_2_setup_st_niso_message_1 = peer_2_st.produce_setup_st_niso_message_1().or_err()?;
+    let peer_3_setup_st_niso_message_1 = peer_3_st.produce_setup_st_niso_message_1().or_err()?;
+    let peer_4_setup_st_niso_message_1 = peer_4_st.produce_setup_st_niso_message_1().or_err()?;
+    let peer_5_setup_st_niso_message_1 = peer_5_st.produce_setup_st_niso_message_1().or_err()?;
     debug!("STs produced SetupStNisoMessage1 to give peers' acknowledgement of PeerIDs to NISOs.");
 
     //////////////////////////////
@@ -2050,30 +2062,35 @@ pub fn run(
     debug!("Step 42:");
     peer_1_niso
         .consume_setup_st_niso_message_1(peer_1_setup_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_st_niso_message_1(peer_2_setup_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_st_niso_message_1(peer_3_setup_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_st_niso_message_1(peer_4_setup_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_st_niso_message_1(peer_5_setup_st_niso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received peers' acknowledgement of PeerIDs.");
-    let peer_1_setup_niso_boomlet_message_3 =
-        peer_1_niso.produce_setup_niso_boomlet_message_3().unwrap();
-    let peer_2_setup_niso_boomlet_message_3 =
-        peer_2_niso.produce_setup_niso_boomlet_message_3().unwrap();
-    let peer_3_setup_niso_boomlet_message_3 =
-        peer_3_niso.produce_setup_niso_boomlet_message_3().unwrap();
-    let peer_4_setup_niso_boomlet_message_3 =
-        peer_4_niso.produce_setup_niso_boomlet_message_3().unwrap();
-    let peer_5_setup_niso_boomlet_message_3 =
-        peer_5_niso.produce_setup_niso_boomlet_message_3().unwrap();
+    let peer_1_setup_niso_boomlet_message_3 = peer_1_niso
+        .produce_setup_niso_boomlet_message_3()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_3 = peer_2_niso
+        .produce_setup_niso_boomlet_message_3()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_3 = peer_3_niso
+        .produce_setup_niso_boomlet_message_3()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_3 = peer_4_niso
+        .produce_setup_niso_boomlet_message_3()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_3 = peer_5_niso
+        .produce_setup_niso_boomlet_message_3()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage3 to give peers' acknowledgement of PeerIDs to Boomlets."
     );
@@ -2084,35 +2101,35 @@ pub fn run(
     debug!("Step 43:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_3(peer_1_setup_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_3(peer_2_setup_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_3(peer_3_setup_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_3(peer_4_setup_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_3(peer_5_setup_niso_boomlet_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received peers' acknowledgement of PeerIDs.");
     let peer_1_setup_boomlet_niso_message_3 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_3 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_3 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_3 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_3 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage3 to sign Boomerang parameters and give it to NISOs."
     );
@@ -2123,35 +2140,35 @@ pub fn run(
     debug!("Step 44:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_3(peer_1_setup_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_3(peer_2_setup_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_3(peer_3_setup_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_3(peer_4_setup_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_3(peer_5_setup_boomlet_niso_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received signed Boomerang parameters.");
     let peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_1 = peer_1_niso
         .produce_setup_niso_peer_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_1 = peer_2_niso
         .produce_setup_niso_peer_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_1 = peer_3_niso
         .produce_setup_niso_peer_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_1 = peer_4_niso
         .produce_setup_niso_peer_niso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_1 = peer_5_niso
         .produce_setup_niso_peer_niso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "NISOs produced parcels of SetupNisoPeerNisoMessage1 to share their signatures on Boomerang parameters."
     );
@@ -2160,38 +2177,38 @@ pub fn run(
     // Step 45 of Setup Diagram //
     //////////////////////////////
     debug!("Step 45:");
-    let peer_1_id = peer_1_niso.get_peer_id().unwrap();
-    let peer_2_id = peer_2_niso.get_peer_id().unwrap();
-    let peer_3_id = peer_3_niso.get_peer_id().unwrap();
-    let peer_4_id = peer_4_niso.get_peer_id().unwrap();
-    let peer_5_id = peer_5_niso.get_peer_id().unwrap();
+    let peer_1_id = peer_1_niso.get_peer_id().or_err()?;
+    let peer_2_id = peer_2_niso.get_peer_id().or_err()?;
+    let peer_3_id = peer_3_niso.get_peer_id().or_err()?;
+    let peer_4_id = peer_4_niso.get_peer_id().or_err()?;
+    let peer_5_id = peer_5_niso.get_peer_id().or_err()?;
     let peer_1_parcel_to_be_received_setup_niso_peer_niso_message_1 = Parcel::new(vec![
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2200,28 +2217,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2230,28 +2247,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2260,28 +2277,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2290,28 +2307,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_1
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2319,38 +2336,43 @@ pub fn run(
         .consume_setup_niso_peer_niso_message_1(
             peer_1_parcel_to_be_received_setup_niso_peer_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_peer_niso_message_1(
             peer_2_parcel_to_be_received_setup_niso_peer_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_peer_niso_message_1(
             peer_3_parcel_to_be_received_setup_niso_peer_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_peer_niso_message_1(
             peer_4_parcel_to_be_received_setup_niso_peer_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_peer_niso_message_1(
             peer_5_parcel_to_be_received_setup_niso_peer_niso_message_1,
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received signed Boomerang parameters of other NISOs.");
-    let peer_1_setup_niso_boomlet_message_4 =
-        peer_1_niso.produce_setup_niso_boomlet_message_4().unwrap();
-    let peer_2_setup_niso_boomlet_message_4 =
-        peer_2_niso.produce_setup_niso_boomlet_message_4().unwrap();
-    let peer_3_setup_niso_boomlet_message_4 =
-        peer_3_niso.produce_setup_niso_boomlet_message_4().unwrap();
-    let peer_4_setup_niso_boomlet_message_4 =
-        peer_4_niso.produce_setup_niso_boomlet_message_4().unwrap();
-    let peer_5_setup_niso_boomlet_message_4 =
-        peer_5_niso.produce_setup_niso_boomlet_message_4().unwrap();
+    let peer_1_setup_niso_boomlet_message_4 = peer_1_niso
+        .produce_setup_niso_boomlet_message_4()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_4 = peer_2_niso
+        .produce_setup_niso_boomlet_message_4()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_4 = peer_3_niso
+        .produce_setup_niso_boomlet_message_4()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_4 = peer_4_niso
+        .produce_setup_niso_boomlet_message_4()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_4 = peer_5_niso
+        .produce_setup_niso_boomlet_message_4()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage4 to give signed Boomerang parameters from all NISOs to their Boomlets."
     );
@@ -2361,35 +2383,35 @@ pub fn run(
     debug!("Step 46:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_4(peer_1_setup_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_4(peer_2_setup_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_4(peer_3_setup_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_4(peer_4_setup_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_4(peer_5_setup_niso_boomlet_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets successfully verified Boomerang parameters.");
     let peer_1_setup_boomlet_niso_message_4 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_4 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_4 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_4 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_4 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage4 to notify their NISOs that Boomerang parameters are accepted."
     );
@@ -2400,30 +2422,35 @@ pub fn run(
     debug!("Step 47:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_4(peer_1_setup_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_4(peer_2_setup_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_4(peer_3_setup_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_4(peer_4_setup_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_4(peer_5_setup_boomlet_niso_message_4)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs know Boomerang parameters are accepted.");
-    let peer_1_setup_niso_boomlet_message_5 =
-        peer_1_niso.produce_setup_niso_boomlet_message_5().unwrap();
-    let peer_2_setup_niso_boomlet_message_5 =
-        peer_2_niso.produce_setup_niso_boomlet_message_5().unwrap();
-    let peer_3_setup_niso_boomlet_message_5 =
-        peer_3_niso.produce_setup_niso_boomlet_message_5().unwrap();
-    let peer_4_setup_niso_boomlet_message_5 =
-        peer_4_niso.produce_setup_niso_boomlet_message_5().unwrap();
-    let peer_5_setup_niso_boomlet_message_5 =
-        peer_5_niso.produce_setup_niso_boomlet_message_5().unwrap();
+    let peer_1_setup_niso_boomlet_message_5 = peer_1_niso
+        .produce_setup_niso_boomlet_message_5()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_5 = peer_2_niso
+        .produce_setup_niso_boomlet_message_5()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_5 = peer_3_niso
+        .produce_setup_niso_boomlet_message_5()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_5 = peer_4_niso
+        .produce_setup_niso_boomlet_message_5()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_5 = peer_5_niso
+        .produce_setup_niso_boomlet_message_5()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage5 to notify their Boomlets that they should generate mystery."
     );
@@ -2434,35 +2461,35 @@ pub fn run(
     debug!("Step 48:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_5(peer_1_setup_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_5(peer_2_setup_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_5(peer_3_setup_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_5(peer_4_setup_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_5(peer_5_setup_niso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets generated mysteries.");
     let peer_1_setup_boomlet_niso_message_5 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_5 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_5 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_5 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_5 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_5()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage4 to send their signature on relevant data for watchtower registration to their NISOs."
     );
@@ -2473,37 +2500,37 @@ pub fn run(
     debug!("Step 49:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_5(peer_1_setup_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_5(peer_2_setup_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_5(peer_3_setup_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_5(peer_4_setup_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_5(peer_5_setup_boomlet_niso_message_5)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs have Boomlets' signature on relevant data for watchtower registration.");
 
-    let peer_1_setup_niso_wt_message_1 = peer_1_niso.produce_setup_niso_wt_message_1().unwrap();
-    let peer_2_setup_niso_wt_message_1 = peer_2_niso.produce_setup_niso_wt_message_1().unwrap();
-    let peer_3_setup_niso_wt_message_1 = peer_3_niso.produce_setup_niso_wt_message_1().unwrap();
-    let peer_4_setup_niso_wt_message_1 = peer_4_niso.produce_setup_niso_wt_message_1().unwrap();
-    let peer_5_setup_niso_wt_message_1 = peer_5_niso.produce_setup_niso_wt_message_1().unwrap();
+    let peer_1_setup_niso_wt_message_1 = peer_1_niso.produce_setup_niso_wt_message_1().or_err()?;
+    let peer_2_setup_niso_wt_message_1 = peer_2_niso.produce_setup_niso_wt_message_1().or_err()?;
+    let peer_3_setup_niso_wt_message_1 = peer_3_niso.produce_setup_niso_wt_message_1().or_err()?;
+    let peer_4_setup_niso_wt_message_1 = peer_4_niso.produce_setup_niso_wt_message_1().or_err()?;
+    let peer_5_setup_niso_wt_message_1 = peer_5_niso.produce_setup_niso_wt_message_1().or_err()?;
     debug!("NISOs produced SetupNisoWtMessage1 to register their data to watchtowers.");
 
     //////////////////////////////
     // Step 50 of Setup Diagram //
     //////////////////////////////
     debug!("Step 50:");
-    let wt_peer_1_id = peer_1_niso.get_wt_peer_id().unwrap();
-    let wt_peer_2_id = peer_2_niso.get_wt_peer_id().unwrap();
-    let wt_peer_3_id = peer_3_niso.get_wt_peer_id().unwrap();
-    let wt_peer_4_id = peer_4_niso.get_wt_peer_id().unwrap();
-    let wt_peer_5_id = peer_5_niso.get_wt_peer_id().unwrap();
+    let wt_peer_1_id = peer_1_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_2_id = peer_2_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_3_id = peer_3_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_4_id = peer_4_niso.get_wt_peer_id().or_err()?;
+    let wt_peer_5_id = peer_5_niso.get_wt_peer_id().or_err()?;
     let active_wt_parcel_to_be_received_setup_niso_wt_message_1 = Parcel::new(vec![
         MetadataAttachedMessage::new(
             *wt_peer_1_id.get_boomlet_identity_pubkey(),
@@ -2528,10 +2555,10 @@ pub fn run(
     ]);
     active_wt
         .consume_setup_niso_wt_message_1(active_wt_parcel_to_be_received_setup_niso_wt_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Watchtowers received NISOs' registration data.");
     let active_wt_parcel_to_be_sent_setup_wt_niso_message_1 =
-        active_wt.produce_setup_wt_niso_message_1().unwrap();
+        active_wt.produce_setup_wt_niso_message_1().or_err()?;
     debug!("Watchtowers produced parcels of SetupWtNisoMessage1 to send payment info to NISOs.");
 
     //////////////////////////////
@@ -2542,48 +2569,48 @@ pub fn run(
         .consume_setup_wt_niso_message_1(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_1
                 .look_for_message(&wt_peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_wt_niso_message_1(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_1
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_wt_niso_message_1(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_1
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_wt_niso_message_1(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_1
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_wt_niso_message_1(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_1
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received payment info from watchtowers.");
-    let peer_1_setup_niso_output_1 = peer_1_niso.produce_setup_niso_output_1().unwrap();
-    let peer_2_setup_niso_output_1 = peer_2_niso.produce_setup_niso_output_1().unwrap();
-    let peer_3_setup_niso_output_1 = peer_3_niso.produce_setup_niso_output_1().unwrap();
-    let peer_4_setup_niso_output_1 = peer_4_niso.produce_setup_niso_output_1().unwrap();
-    let peer_5_setup_niso_output_1 = peer_5_niso.produce_setup_niso_output_1().unwrap();
+    let peer_1_setup_niso_output_1 = peer_1_niso.produce_setup_niso_output_1().or_err()?;
+    let peer_2_setup_niso_output_1 = peer_2_niso.produce_setup_niso_output_1().or_err()?;
+    let peer_3_setup_niso_output_1 = peer_3_niso.produce_setup_niso_output_1().or_err()?;
+    let peer_4_setup_niso_output_1 = peer_4_niso.produce_setup_niso_output_1().or_err()?;
+    let peer_5_setup_niso_output_1 = peer_5_niso.produce_setup_niso_output_1().or_err()?;
     debug!("NISOs produced SetupNisoOutput1 to signal peers to pay watchtowers' payment info.");
 
     //////////////////////////////
@@ -2592,26 +2619,26 @@ pub fn run(
     debug!("Step 52:");
     peer_1
         .consume_setup_niso_output_1(peer_1_setup_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_niso_output_1(peer_2_setup_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_niso_output_1(peer_3_setup_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_niso_output_1(peer_4_setup_niso_output_1)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_niso_output_1(peer_5_setup_niso_output_1)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers received to watchtowers' payment info.");
-    let peer_1_setup_niso_input_3 = peer_1.produce_setup_niso_input_3().unwrap();
-    let peer_2_setup_niso_input_3 = peer_2.produce_setup_niso_input_3().unwrap();
-    let peer_3_setup_niso_input_3 = peer_3.produce_setup_niso_input_3().unwrap();
-    let peer_4_setup_niso_input_3 = peer_4.produce_setup_niso_input_3().unwrap();
-    let peer_5_setup_niso_input_3 = peer_5.produce_setup_niso_input_3().unwrap();
+    let peer_1_setup_niso_input_3 = peer_1.produce_setup_niso_input_3().or_err()?;
+    let peer_2_setup_niso_input_3 = peer_2.produce_setup_niso_input_3().or_err()?;
+    let peer_3_setup_niso_input_3 = peer_3.produce_setup_niso_input_3().or_err()?;
+    let peer_4_setup_niso_input_3 = peer_4.produce_setup_niso_input_3().or_err()?;
+    let peer_5_setup_niso_input_3 = peer_5.produce_setup_niso_input_3().or_err()?;
 
     debug!(
         "Peers produced SetupNisoInput3 to send payment receipts related to watchtowers' service to NISOs."
@@ -2623,25 +2650,25 @@ pub fn run(
     debug!("Step 53:");
     peer_1_niso
         .consume_setup_niso_input_3(peer_1_setup_niso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_input_3(peer_2_setup_niso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_input_3(peer_3_setup_niso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_input_3(peer_4_setup_niso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_input_3(peer_5_setup_niso_input_3)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received payment receipts related to watchtowers' service.");
-    let peer_1_setup_niso_wt_message_2 = peer_1_niso.produce_setup_niso_wt_message_2().unwrap();
-    let peer_2_setup_niso_wt_message_2 = peer_2_niso.produce_setup_niso_wt_message_2().unwrap();
-    let peer_3_setup_niso_wt_message_2 = peer_3_niso.produce_setup_niso_wt_message_2().unwrap();
-    let peer_4_setup_niso_wt_message_2 = peer_4_niso.produce_setup_niso_wt_message_2().unwrap();
-    let peer_5_setup_niso_wt_message_2 = peer_5_niso.produce_setup_niso_wt_message_2().unwrap();
+    let peer_1_setup_niso_wt_message_2 = peer_1_niso.produce_setup_niso_wt_message_2().or_err()?;
+    let peer_2_setup_niso_wt_message_2 = peer_2_niso.produce_setup_niso_wt_message_2().or_err()?;
+    let peer_3_setup_niso_wt_message_2 = peer_3_niso.produce_setup_niso_wt_message_2().or_err()?;
+    let peer_4_setup_niso_wt_message_2 = peer_4_niso.produce_setup_niso_wt_message_2().or_err()?;
+    let peer_5_setup_niso_wt_message_2 = peer_5_niso.produce_setup_niso_wt_message_2().or_err()?;
     debug!("NISOs produced SetupNisoWtMessage2 to give service payment receipts to watchtowers.");
 
     //////////////////////////////
@@ -2657,10 +2684,10 @@ pub fn run(
     ]);
     active_wt
         .consume_setup_niso_wt_message_2(active_wt_parcel_to_be_received_setup_niso_wt_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Watchtowers received service payment receipts from NISOs.");
     let active_wt_parcel_to_be_sent_setup_wt_niso_message_2 =
-        active_wt.produce_setup_wt_niso_message_2().unwrap();
+        active_wt.produce_setup_wt_niso_message_2().or_err()?;
     debug!(
         "Watchtowers produced parcels of SetupWtNisoMessage2 to acknowledge their agreement to setup and Boomerang descriptor to NISOs."
     );
@@ -2673,53 +2700,58 @@ pub fn run(
         .consume_setup_wt_niso_message_2(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_2
                 .look_for_message(&wt_peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_wt_niso_message_2(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_2
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_wt_niso_message_2(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_2
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_wt_niso_message_2(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_2
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_wt_niso_message_2(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_2
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received watchtowers acknowledgement on setup and Boomerang descriptor.");
-    let peer_1_setup_niso_boomlet_message_6 =
-        peer_1_niso.produce_setup_niso_boomlet_message_6().unwrap();
-    let peer_2_setup_niso_boomlet_message_6 =
-        peer_2_niso.produce_setup_niso_boomlet_message_6().unwrap();
-    let peer_3_setup_niso_boomlet_message_6 =
-        peer_3_niso.produce_setup_niso_boomlet_message_6().unwrap();
-    let peer_4_setup_niso_boomlet_message_6 =
-        peer_4_niso.produce_setup_niso_boomlet_message_6().unwrap();
-    let peer_5_setup_niso_boomlet_message_6 =
-        peer_5_niso.produce_setup_niso_boomlet_message_6().unwrap();
+    let peer_1_setup_niso_boomlet_message_6 = peer_1_niso
+        .produce_setup_niso_boomlet_message_6()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_6 = peer_2_niso
+        .produce_setup_niso_boomlet_message_6()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_6 = peer_3_niso
+        .produce_setup_niso_boomlet_message_6()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_6 = peer_4_niso
+        .produce_setup_niso_boomlet_message_6()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_6 = peer_5_niso
+        .produce_setup_niso_boomlet_message_6()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage6 to give watchtowers' signature on the fingerprint Boomerang parameters to Boomlets to verify."
     );
@@ -2730,37 +2762,37 @@ pub fn run(
     debug!("Step 56:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_6(peer_1_setup_niso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_6(peer_2_setup_niso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_6(peer_3_setup_niso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_6(peer_4_setup_niso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_6(peer_5_setup_niso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets received and verified watchtowers' signature on the fingerprint Boomerang parameters."
     );
     let peer_1_setup_boomlet_niso_message_6 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_6 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_6 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_6 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_6 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_6()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage6 to give their signature on watchtower service initialization to NISOs."
     );
@@ -2771,35 +2803,35 @@ pub fn run(
     debug!("Step 57:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_6(peer_1_setup_boomlet_niso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_6(peer_2_setup_boomlet_niso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_6(peer_3_setup_boomlet_niso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_6(peer_4_setup_boomlet_niso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_6(peer_5_setup_boomlet_niso_message_6)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received Boomlets' signature on watchtower service initialization.");
     let peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_2 = peer_1_niso
         .produce_setup_niso_peer_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_2 = peer_2_niso
         .produce_setup_niso_peer_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_2 = peer_3_niso
         .produce_setup_niso_peer_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_2 = peer_4_niso
         .produce_setup_niso_peer_niso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_2 = peer_5_niso
         .produce_setup_niso_peer_niso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "NISOs produced parcels of SetupNisoPeerNisoMessage2 to share their boomlet's signatures on watchtower service initialization."
     );
@@ -2813,28 +2845,28 @@ pub fn run(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2843,28 +2875,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2873,28 +2905,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2903,28 +2935,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2933,28 +2965,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_2
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -2962,38 +2994,43 @@ pub fn run(
         .consume_setup_niso_peer_niso_message_2(
             peer_1_parcel_to_be_received_setup_niso_peer_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_peer_niso_message_2(
             peer_2_parcel_to_be_received_setup_niso_peer_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_peer_niso_message_2(
             peer_3_parcel_to_be_received_setup_niso_peer_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_peer_niso_message_2(
             peer_4_parcel_to_be_received_setup_niso_peer_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_peer_niso_message_2(
             peer_5_parcel_to_be_received_setup_niso_peer_niso_message_2,
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs exchanged their boomlet's signatures on watchtower service initialization.");
-    let peer_1_setup_niso_boomlet_message_7 =
-        peer_1_niso.produce_setup_niso_boomlet_message_7().unwrap();
-    let peer_2_setup_niso_boomlet_message_7 =
-        peer_2_niso.produce_setup_niso_boomlet_message_7().unwrap();
-    let peer_3_setup_niso_boomlet_message_7 =
-        peer_3_niso.produce_setup_niso_boomlet_message_7().unwrap();
-    let peer_4_setup_niso_boomlet_message_7 =
-        peer_4_niso.produce_setup_niso_boomlet_message_7().unwrap();
-    let peer_5_setup_niso_boomlet_message_7 =
-        peer_5_niso.produce_setup_niso_boomlet_message_7().unwrap();
+    let peer_1_setup_niso_boomlet_message_7 = peer_1_niso
+        .produce_setup_niso_boomlet_message_7()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_7 = peer_2_niso
+        .produce_setup_niso_boomlet_message_7()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_7 = peer_3_niso
+        .produce_setup_niso_boomlet_message_7()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_7 = peer_4_niso
+        .produce_setup_niso_boomlet_message_7()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_7 = peer_5_niso
+        .produce_setup_niso_boomlet_message_7()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage7 to give peers' boomlet signature on watchtower service initialization to their Boomlets."
     );
@@ -3004,37 +3041,37 @@ pub fn run(
     debug!("Step 59:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_7(peer_1_setup_niso_boomlet_message_7)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_7(peer_2_setup_niso_boomlet_message_7)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_7(peer_3_setup_niso_boomlet_message_7)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_7(peer_4_setup_niso_boomlet_message_7)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_7(peer_5_setup_niso_boomlet_message_7)
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets received and verified peers' boomlet signature on watchtower service initialization."
     );
     let peer_1_setup_boomlet_niso_message_7 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_7()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_7 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_7()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_7 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_7()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_7 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_7()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_7 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_7()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage7 to notify NISOs that they verified watchtower service initialization."
     );
@@ -3045,30 +3082,35 @@ pub fn run(
     debug!("Step 60:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_7(peer_1_setup_boomlet_niso_message_7)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_7(peer_2_setup_boomlet_niso_message_7)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_7(peer_3_setup_boomlet_niso_message_7)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_7(peer_4_setup_boomlet_niso_message_7)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_7(peer_5_setup_boomlet_niso_message_7)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received Boomlets' acknowledgement of watchtower service initialization.");
-    let peer_1_setup_niso_boomlet_message_8 =
-        peer_1_niso.produce_setup_niso_boomlet_message_8().unwrap();
-    let peer_2_setup_niso_boomlet_message_8 =
-        peer_2_niso.produce_setup_niso_boomlet_message_8().unwrap();
-    let peer_3_setup_niso_boomlet_message_8 =
-        peer_3_niso.produce_setup_niso_boomlet_message_8().unwrap();
-    let peer_4_setup_niso_boomlet_message_8 =
-        peer_4_niso.produce_setup_niso_boomlet_message_8().unwrap();
-    let peer_5_setup_niso_boomlet_message_8 =
-        peer_5_niso.produce_setup_niso_boomlet_message_8().unwrap();
+    let peer_1_setup_niso_boomlet_message_8 = peer_1_niso
+        .produce_setup_niso_boomlet_message_8()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_8 = peer_2_niso
+        .produce_setup_niso_boomlet_message_8()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_8 = peer_3_niso
+        .produce_setup_niso_boomlet_message_8()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_8 = peer_4_niso
+        .produce_setup_niso_boomlet_message_8()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_8 = peer_5_niso
+        .produce_setup_niso_boomlet_message_8()
+        .or_err()?;
     debug!("NISOs produced SetupNisoBoomletMessage8 to tell their Boomlets to finalize SARs.");
 
     //////////////////////////////
@@ -3077,35 +3119,35 @@ pub fn run(
     debug!("Step 61:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_8(peer_1_setup_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_8(peer_2_setup_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_8(peer_3_setup_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_8(peer_4_setup_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_8(peer_5_setup_niso_boomlet_message_8)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received their NISOs' order to finalize SARs.");
     let peer_1_setup_boomlet_niso_message_8 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_8 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_8 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_8 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_8 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_8()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage8 to share their signature on SAR IDs with NISOs to pass to watchtowers for SAR finalization."
     );
@@ -3116,25 +3158,25 @@ pub fn run(
     debug!("Step 62:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_8(peer_1_setup_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_8(peer_2_setup_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_8(peer_3_setup_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_8(peer_4_setup_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_8(peer_5_setup_boomlet_niso_message_8)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received Boomlet's signature on SAR IDs.");
-    let peer_1_setup_niso_wt_message_3 = peer_1_niso.produce_setup_niso_wt_message_3().unwrap();
-    let peer_2_setup_niso_wt_message_3 = peer_2_niso.produce_setup_niso_wt_message_3().unwrap();
-    let peer_3_setup_niso_wt_message_3 = peer_3_niso.produce_setup_niso_wt_message_3().unwrap();
-    let peer_4_setup_niso_wt_message_3 = peer_4_niso.produce_setup_niso_wt_message_3().unwrap();
-    let peer_5_setup_niso_wt_message_3 = peer_5_niso.produce_setup_niso_wt_message_3().unwrap();
+    let peer_1_setup_niso_wt_message_3 = peer_1_niso.produce_setup_niso_wt_message_3().or_err()?;
+    let peer_2_setup_niso_wt_message_3 = peer_2_niso.produce_setup_niso_wt_message_3().or_err()?;
+    let peer_3_setup_niso_wt_message_3 = peer_3_niso.produce_setup_niso_wt_message_3().or_err()?;
+    let peer_4_setup_niso_wt_message_3 = peer_4_niso.produce_setup_niso_wt_message_3().or_err()?;
+    let peer_5_setup_niso_wt_message_3 = peer_5_niso.produce_setup_niso_wt_message_3().or_err()?;
     debug!(
         "NISOs produced SetupNisoWtMessage3 to give Boomlet's signature on SAR IDs to watchtowers for SAR finalization."
     );
@@ -3152,10 +3194,10 @@ pub fn run(
     ]);
     active_wt
         .consume_setup_niso_wt_message_3(active_wt_parcel_to_be_received_setup_niso_wt_message_3)
-        .unwrap();
+        .or_err()?;
     debug!("Watchtowers received Boomlet's signature on SAR IDs.");
     let active_wt_parcel_to_be_sent_setup_wt_sar_message_1 =
-        active_wt.produce_setup_wt_sar_message_1().unwrap();
+        active_wt.produce_setup_wt_sar_message_1().or_err()?;
     debug!(
         "Watchtower produced parcels of SetupWtSarMessage1 to give SAR finalization data to SARs."
     );
@@ -3168,103 +3210,103 @@ pub fn run(
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_1_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_1_sar_2
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_1_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_1
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_2_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_sar_2
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_2_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_1
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_3_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_sar_2
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_3_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_1
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_4_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_sar_2
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_4_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_1
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_5_sar_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_sar_2
         .consume_setup_wt_sar_message_1(
             active_wt_parcel_to_be_sent_setup_wt_sar_message_1
                 .look_for_message(&peer_5_sar_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("SARs received SAR finalization data.");
     let peer_1_sar_1_setup_sar_wt_message_1 =
-        peer_1_sar_1.produce_setup_sar_wt_message_1().unwrap();
+        peer_1_sar_1.produce_setup_sar_wt_message_1().or_err()?;
     let peer_1_sar_2_setup_sar_wt_message_1 =
-        peer_1_sar_2.produce_setup_sar_wt_message_1().unwrap();
+        peer_1_sar_2.produce_setup_sar_wt_message_1().or_err()?;
     let peer_2_sar_1_setup_sar_wt_message_1 =
-        peer_2_sar_1.produce_setup_sar_wt_message_1().unwrap();
+        peer_2_sar_1.produce_setup_sar_wt_message_1().or_err()?;
     let peer_2_sar_2_setup_sar_wt_message_1 =
-        peer_2_sar_2.produce_setup_sar_wt_message_1().unwrap();
+        peer_2_sar_2.produce_setup_sar_wt_message_1().or_err()?;
     let peer_3_sar_1_setup_sar_wt_message_1 =
-        peer_3_sar_1.produce_setup_sar_wt_message_1().unwrap();
+        peer_3_sar_1.produce_setup_sar_wt_message_1().or_err()?;
     let peer_3_sar_2_setup_sar_wt_message_1 =
-        peer_3_sar_2.produce_setup_sar_wt_message_1().unwrap();
+        peer_3_sar_2.produce_setup_sar_wt_message_1().or_err()?;
     let peer_4_sar_1_setup_sar_wt_message_1 =
-        peer_4_sar_1.produce_setup_sar_wt_message_1().unwrap();
+        peer_4_sar_1.produce_setup_sar_wt_message_1().or_err()?;
     let peer_4_sar_2_setup_sar_wt_message_1 =
-        peer_4_sar_2.produce_setup_sar_wt_message_1().unwrap();
+        peer_4_sar_2.produce_setup_sar_wt_message_1().or_err()?;
     let peer_5_sar_1_setup_sar_wt_message_1 =
-        peer_5_sar_1.produce_setup_sar_wt_message_1().unwrap();
+        peer_5_sar_1.produce_setup_sar_wt_message_1().or_err()?;
     let peer_5_sar_2_setup_sar_wt_message_1 =
-        peer_5_sar_2.produce_setup_sar_wt_message_1().unwrap();
+        peer_5_sar_2.produce_setup_sar_wt_message_1().or_err()?;
     debug!(
         "SARs produced SetupSarWtMessage1 to give SARs acknowledgement of SAR finalization to watchtowers."
     );
@@ -3287,10 +3329,10 @@ pub fn run(
     ]);
     active_wt
         .consume_setup_sar_wt_message_1(active_wt_parcel_to_be_received_setup_sar_wt_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Watchtowers received SARs acknowledgement of SAR finalization.");
     let active_wt_parcel_to_be_sent_setup_wt_niso_message_3 =
-        active_wt.produce_setup_wt_niso_message_3().unwrap();
+        active_wt.produce_setup_wt_niso_message_3().or_err()?;
     debug!(
         "Watchtowers produced parcels of SetupWtNisoMessage3 to give watchtower's acknowledgement of SAR finalization to NISOs."
     );
@@ -3303,53 +3345,58 @@ pub fn run(
         .consume_setup_wt_niso_message_3(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_3
                 .look_for_message(&wt_peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_wt_niso_message_3(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_3
                 .look_for_message(&wt_peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_wt_niso_message_3(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_3
                 .look_for_message(&wt_peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_wt_niso_message_3(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_3
                 .look_for_message(&wt_peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_wt_niso_message_3(
             active_wt_parcel_to_be_sent_setup_wt_niso_message_3
                 .look_for_message(&wt_peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received watchtowers' acknowledgement of SAR finalization.");
-    let peer_1_setup_niso_boomlet_message_9 =
-        peer_1_niso.produce_setup_niso_boomlet_message_9().unwrap();
-    let peer_2_setup_niso_boomlet_message_9 =
-        peer_2_niso.produce_setup_niso_boomlet_message_9().unwrap();
-    let peer_3_setup_niso_boomlet_message_9 =
-        peer_3_niso.produce_setup_niso_boomlet_message_9().unwrap();
-    let peer_4_setup_niso_boomlet_message_9 =
-        peer_4_niso.produce_setup_niso_boomlet_message_9().unwrap();
-    let peer_5_setup_niso_boomlet_message_9 =
-        peer_5_niso.produce_setup_niso_boomlet_message_9().unwrap();
+    let peer_1_setup_niso_boomlet_message_9 = peer_1_niso
+        .produce_setup_niso_boomlet_message_9()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_9 = peer_2_niso
+        .produce_setup_niso_boomlet_message_9()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_9 = peer_3_niso
+        .produce_setup_niso_boomlet_message_9()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_9 = peer_4_niso
+        .produce_setup_niso_boomlet_message_9()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_9 = peer_5_niso
+        .produce_setup_niso_boomlet_message_9()
+        .or_err()?;
     debug!(
         "NISOs produced parcels of SetupNisoBoomletMessage9 to give watchtowers' acknowledgement of SAR finalization to Boomlets."
     );
@@ -3360,35 +3407,35 @@ pub fn run(
     debug!("Step 67:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_9(peer_1_setup_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_9(peer_2_setup_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_9(peer_3_setup_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_9(peer_4_setup_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_9(peer_5_setup_niso_boomlet_message_9)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received and verified watchtowers' acknowledgement of SAR finalization.");
     let peer_1_setup_boomlet_niso_message_9 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_9 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_9 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_9 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_9 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_9()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage9 to share their signatures for SAR finalization."
     );
@@ -3399,35 +3446,35 @@ pub fn run(
     debug!("Step 68:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_9(peer_1_setup_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_9(peer_2_setup_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_9(peer_3_setup_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_9(peer_4_setup_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_9(peer_5_setup_boomlet_niso_message_9)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received their Boomlet's signature for SAR finalization.");
     let peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_3 = peer_1_niso
         .produce_setup_niso_peer_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_3 = peer_2_niso
         .produce_setup_niso_peer_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_3 = peer_3_niso
         .produce_setup_niso_peer_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_3 = peer_4_niso
         .produce_setup_niso_peer_niso_message_3()
-        .unwrap();
+        .or_err()?;
     let peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_3 = peer_5_niso
         .produce_setup_niso_peer_niso_message_3()
-        .unwrap();
+        .or_err()?;
     debug!(
         "NISOs produced parcels of SetupNisoPeerNisoMessage3 to share their Boomlet's signatures on SAR finalization."
     );
@@ -3441,28 +3488,28 @@ pub fn run(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -3471,28 +3518,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -3501,28 +3548,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -3531,28 +3578,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -3561,28 +3608,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_3
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -3590,38 +3637,43 @@ pub fn run(
         .consume_setup_niso_peer_niso_message_3(
             peer_1_parcel_to_be_received_setup_niso_peer_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_peer_niso_message_3(
             peer_2_parcel_to_be_received_setup_niso_peer_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_peer_niso_message_3(
             peer_3_parcel_to_be_received_setup_niso_peer_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_peer_niso_message_3(
             peer_4_parcel_to_be_received_setup_niso_peer_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_peer_niso_message_3(
             peer_5_parcel_to_be_received_setup_niso_peer_niso_message_3,
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs exchanged their Boomlet's signatures on SAR finalization.");
-    let peer_1_setup_niso_boomlet_message_10 =
-        peer_1_niso.produce_setup_niso_boomlet_message_10().unwrap();
-    let peer_2_setup_niso_boomlet_message_10 =
-        peer_2_niso.produce_setup_niso_boomlet_message_10().unwrap();
-    let peer_3_setup_niso_boomlet_message_10 =
-        peer_3_niso.produce_setup_niso_boomlet_message_10().unwrap();
-    let peer_4_setup_niso_boomlet_message_10 =
-        peer_4_niso.produce_setup_niso_boomlet_message_10().unwrap();
-    let peer_5_setup_niso_boomlet_message_10 =
-        peer_5_niso.produce_setup_niso_boomlet_message_10().unwrap();
+    let peer_1_setup_niso_boomlet_message_10 = peer_1_niso
+        .produce_setup_niso_boomlet_message_10()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_10 = peer_2_niso
+        .produce_setup_niso_boomlet_message_10()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_10 = peer_3_niso
+        .produce_setup_niso_boomlet_message_10()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_10 = peer_4_niso
+        .produce_setup_niso_boomlet_message_10()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_10 = peer_5_niso
+        .produce_setup_niso_boomlet_message_10()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage10 to share all peers' Boomlet signatures on SAR finalization with their Boomlet."
     );
@@ -3632,35 +3684,35 @@ pub fn run(
     debug!("Step 70:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_10(peer_1_setup_niso_boomlet_message_10)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_10(peer_2_setup_niso_boomlet_message_10)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_10(peer_3_setup_niso_boomlet_message_10)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_10(peer_4_setup_niso_boomlet_message_10)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_10(peer_5_setup_niso_boomlet_message_10)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received all peers' Boomlet signatures on SAR finalization.");
     let peer_1_setup_boomlet_niso_message_10 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_10()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_10 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_10()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_10 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_10()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_10 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_10()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_10 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_10()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomlets produced SetupBoomletNisoMessage10 to notify their NISOs of SAR finalization."
     );
@@ -3671,25 +3723,25 @@ pub fn run(
     debug!("Step 71:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_10(peer_1_setup_boomlet_niso_message_10)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_10(peer_2_setup_boomlet_niso_message_10)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_10(peer_3_setup_boomlet_niso_message_10)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_10(peer_4_setup_boomlet_niso_message_10)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_10(peer_5_setup_boomlet_niso_message_10)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs know about SAR finalization.");
-    let peer_1_setup_niso_output_2 = peer_1_niso.produce_setup_niso_output_2().unwrap();
-    let peer_2_setup_niso_output_2 = peer_2_niso.produce_setup_niso_output_2().unwrap();
-    let peer_3_setup_niso_output_2 = peer_3_niso.produce_setup_niso_output_2().unwrap();
-    let peer_4_setup_niso_output_2 = peer_4_niso.produce_setup_niso_output_2().unwrap();
-    let peer_5_setup_niso_output_2 = peer_5_niso.produce_setup_niso_output_2().unwrap();
+    let peer_1_setup_niso_output_2 = peer_1_niso.produce_setup_niso_output_2().or_err()?;
+    let peer_2_setup_niso_output_2 = peer_2_niso.produce_setup_niso_output_2().or_err()?;
+    let peer_3_setup_niso_output_2 = peer_3_niso.produce_setup_niso_output_2().or_err()?;
+    let peer_4_setup_niso_output_2 = peer_4_niso.produce_setup_niso_output_2().or_err()?;
+    let peer_5_setup_niso_output_2 = peer_5_niso.produce_setup_niso_output_2().or_err()?;
     debug!("NISOs produced SetupNisoOutput2 to notify peers about SAR finalization.");
 
     //////////////////////////////
@@ -3698,26 +3750,26 @@ pub fn run(
     debug!("Step 72:");
     peer_1
         .consume_setup_niso_output_2(peer_1_setup_niso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_niso_output_2(peer_2_setup_niso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_niso_output_2(peer_3_setup_niso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_niso_output_2(peer_4_setup_niso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_niso_output_2(peer_5_setup_niso_output_2)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers know that SARs are finalized.");
-    let peer_1_setup_iso_input_2 = peer_1.produce_setup_iso_input_2().unwrap();
-    let peer_2_setup_iso_input_2 = peer_2.produce_setup_iso_input_2().unwrap();
-    let peer_3_setup_iso_input_2 = peer_3.produce_setup_iso_input_2().unwrap();
-    let peer_4_setup_iso_input_2 = peer_4.produce_setup_iso_input_2().unwrap();
-    let peer_5_setup_iso_input_2 = peer_5.produce_setup_iso_input_2().unwrap();
+    let peer_1_setup_iso_input_2 = peer_1.produce_setup_iso_input_2().or_err()?;
+    let peer_2_setup_iso_input_2 = peer_2.produce_setup_iso_input_2().or_err()?;
+    let peer_3_setup_iso_input_2 = peer_3.produce_setup_iso_input_2().or_err()?;
+    let peer_4_setup_iso_input_2 = peer_4.produce_setup_iso_input_2().or_err()?;
+    let peer_5_setup_iso_input_2 = peer_5.produce_setup_iso_input_2().or_err()?;
     debug!(
         "Peers produced SetupIsoInput2 to tell ISOs to install Boomlet software on Boomletwo. They connected Boomletwo to ISO."
     );
@@ -3733,30 +3785,35 @@ pub fn run(
     // peer_5_iso.reset_state();
     peer_1_iso
         .consume_setup_iso_input_2(peer_1_setup_iso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_iso_input_2(peer_2_setup_iso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_iso_input_2(peer_3_setup_iso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_iso_input_2(peer_4_setup_iso_input_2)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_iso_input_2(peer_5_setup_iso_input_2)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received peers' order to install Boomlet software on Boomletwo.");
-    let peer_1_setup_iso_boomletwo_message_1 =
-        peer_1_iso.produce_setup_iso_boomletwo_message_1().unwrap();
-    let peer_2_setup_iso_boomletwo_message_1 =
-        peer_2_iso.produce_setup_iso_boomletwo_message_1().unwrap();
-    let peer_3_setup_iso_boomletwo_message_1 =
-        peer_3_iso.produce_setup_iso_boomletwo_message_1().unwrap();
-    let peer_4_setup_iso_boomletwo_message_1 =
-        peer_4_iso.produce_setup_iso_boomletwo_message_1().unwrap();
-    let peer_5_setup_iso_boomletwo_message_1 =
-        peer_5_iso.produce_setup_iso_boomletwo_message_1().unwrap();
+    let peer_1_setup_iso_boomletwo_message_1 = peer_1_iso
+        .produce_setup_iso_boomletwo_message_1()
+        .or_err()?;
+    let peer_2_setup_iso_boomletwo_message_1 = peer_2_iso
+        .produce_setup_iso_boomletwo_message_1()
+        .or_err()?;
+    let peer_3_setup_iso_boomletwo_message_1 = peer_3_iso
+        .produce_setup_iso_boomletwo_message_1()
+        .or_err()?;
+    let peer_4_setup_iso_boomletwo_message_1 = peer_4_iso
+        .produce_setup_iso_boomletwo_message_1()
+        .or_err()?;
+    let peer_5_setup_iso_boomletwo_message_1 = peer_5_iso
+        .produce_setup_iso_boomletwo_message_1()
+        .or_err()?;
     debug!("ISOs produced SetupIsoBoomletwoMessage1 to install Boomlet software on Boomletwo.");
 
     //////////////////////////////
@@ -3765,35 +3822,35 @@ pub fn run(
     debug!("Step 74:");
     peer_1_boomletwo
         .consume_setup_iso_boomletwo_message_1(peer_1_setup_iso_boomletwo_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_boomletwo
         .consume_setup_iso_boomletwo_message_1(peer_2_setup_iso_boomletwo_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_boomletwo
         .consume_setup_iso_boomletwo_message_1(peer_3_setup_iso_boomletwo_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_boomletwo
         .consume_setup_iso_boomletwo_message_1(peer_4_setup_iso_boomletwo_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_boomletwo
         .consume_setup_iso_boomletwo_message_1(peer_5_setup_iso_boomletwo_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("Boomletwo installed Boomlet software.");
     let peer_1_setup_boomletwo_iso_message_1 = peer_1_boomletwo
         .produce_setup_boomletwo_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomletwo_iso_message_1 = peer_2_boomletwo
         .produce_setup_boomletwo_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomletwo_iso_message_1 = peer_3_boomletwo
         .produce_setup_boomletwo_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomletwo_iso_message_1 = peer_4_boomletwo
         .produce_setup_boomletwo_iso_message_1()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomletwo_iso_message_1 = peer_5_boomletwo
         .produce_setup_boomletwo_iso_message_1()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomletwos produced SetupBoomletwoIsoMessage1 to give their identity pubkeys to their ISOs."
     );
@@ -3804,25 +3861,25 @@ pub fn run(
     debug!("Step 75:");
     peer_1_iso
         .consume_setup_boomletwo_iso_message_1(peer_1_setup_boomletwo_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomletwo_iso_message_1(peer_2_setup_boomletwo_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomletwo_iso_message_1(peer_3_setup_boomletwo_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomletwo_iso_message_1(peer_4_setup_boomletwo_iso_message_1)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomletwo_iso_message_1(peer_5_setup_boomletwo_iso_message_1)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received their Boomletwo's identity pubkey.");
-    let peer_1_setup_iso_output_2 = peer_1_iso.produce_setup_iso_output_2().unwrap();
-    let peer_2_setup_iso_output_2 = peer_2_iso.produce_setup_iso_output_2().unwrap();
-    let peer_3_setup_iso_output_2 = peer_3_iso.produce_setup_iso_output_2().unwrap();
-    let peer_4_setup_iso_output_2 = peer_4_iso.produce_setup_iso_output_2().unwrap();
-    let peer_5_setup_iso_output_2 = peer_5_iso.produce_setup_iso_output_2().unwrap();
+    let peer_1_setup_iso_output_2 = peer_1_iso.produce_setup_iso_output_2().or_err()?;
+    let peer_2_setup_iso_output_2 = peer_2_iso.produce_setup_iso_output_2().or_err()?;
+    let peer_3_setup_iso_output_2 = peer_3_iso.produce_setup_iso_output_2().or_err()?;
+    let peer_4_setup_iso_output_2 = peer_4_iso.produce_setup_iso_output_2().or_err()?;
+    let peer_5_setup_iso_output_2 = peer_5_iso.produce_setup_iso_output_2().or_err()?;
     debug!("ISOs produced SetupIsoOutput2 to signal to peers to connect ISO to Boomlet.");
 
     //////////////////////////////
@@ -3831,26 +3888,26 @@ pub fn run(
     debug!("Step 76:");
     peer_1
         .consume_setup_iso_output_2(peer_1_setup_iso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_iso_output_2(peer_2_setup_iso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_iso_output_2(peer_3_setup_iso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_iso_output_2(peer_4_setup_iso_output_2)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_iso_output_2(peer_5_setup_iso_output_2)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers are notified to connect their ISO to Boomlet.");
-    let peer_1_setup_iso_input_3 = peer_1.produce_setup_iso_input_3().unwrap();
-    let peer_2_setup_iso_input_3 = peer_2.produce_setup_iso_input_3().unwrap();
-    let peer_3_setup_iso_input_3 = peer_3.produce_setup_iso_input_3().unwrap();
-    let peer_4_setup_iso_input_3 = peer_4.produce_setup_iso_input_3().unwrap();
-    let peer_5_setup_iso_input_3 = peer_5.produce_setup_iso_input_3().unwrap();
+    let peer_1_setup_iso_input_3 = peer_1.produce_setup_iso_input_3().or_err()?;
+    let peer_2_setup_iso_input_3 = peer_2.produce_setup_iso_input_3().or_err()?;
+    let peer_3_setup_iso_input_3 = peer_3.produce_setup_iso_input_3().or_err()?;
+    let peer_4_setup_iso_input_3 = peer_4.produce_setup_iso_input_3().or_err()?;
+    let peer_5_setup_iso_input_3 = peer_5.produce_setup_iso_input_3().or_err()?;
     debug!("Peers produced SetupIsoOutput3 to signal Boomlet connection to ISO.");
 
     //////////////////////////////
@@ -3859,30 +3916,30 @@ pub fn run(
     debug!("Step 77:");
     peer_1_iso
         .consume_setup_iso_input_3(peer_1_setup_iso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_iso_input_3(peer_2_setup_iso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_iso_input_3(peer_3_setup_iso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_iso_input_3(peer_4_setup_iso_input_3)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_iso_input_3(peer_5_setup_iso_input_3)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs are aware of their connection to Boomlet.");
     let peer_1_setup_iso_boomlet_message_5 =
-        peer_1_iso.produce_setup_iso_boomlet_message_5().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_5().or_err()?;
     let peer_2_setup_iso_boomlet_message_5 =
-        peer_2_iso.produce_setup_iso_boomlet_message_5().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_5().or_err()?;
     let peer_3_setup_iso_boomlet_message_5 =
-        peer_3_iso.produce_setup_iso_boomlet_message_5().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_5().or_err()?;
     let peer_4_setup_iso_boomlet_message_5 =
-        peer_4_iso.produce_setup_iso_boomlet_message_5().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_5().or_err()?;
     let peer_5_setup_iso_boomlet_message_5 =
-        peer_5_iso.produce_setup_iso_boomlet_message_5().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_5().or_err()?;
     debug!(
         "ISOs produced SetupIsoBoomletMessage5 to issue a backup request with their Boomletwo identity pubkeys to their Boomlets."
     );
@@ -3893,35 +3950,35 @@ pub fn run(
     debug!("Step 78:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_5(peer_1_setup_iso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_5(peer_2_setup_iso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_5(peer_3_setup_iso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_5(peer_4_setup_iso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_5(peer_5_setup_iso_boomlet_message_5)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received backup request.");
     let peer_1_setup_boomlet_iso_message_5 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_5 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_5 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_5 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_5()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_5 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_5()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletIsoMessage5 to send backup data to their ISOs.");
 
     //////////////////////////////
@@ -3930,25 +3987,25 @@ pub fn run(
     debug!("Step 79:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_5(peer_1_setup_boomlet_iso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_5(peer_2_setup_boomlet_iso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_5(peer_3_setup_boomlet_iso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_5(peer_4_setup_boomlet_iso_message_5)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_5(peer_5_setup_boomlet_iso_message_5)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs received Boomlets' backup data.");
-    let peer_1_setup_iso_output_3 = peer_1_iso.produce_setup_iso_output_3().unwrap();
-    let peer_2_setup_iso_output_3 = peer_2_iso.produce_setup_iso_output_3().unwrap();
-    let peer_3_setup_iso_output_3 = peer_3_iso.produce_setup_iso_output_3().unwrap();
-    let peer_4_setup_iso_output_3 = peer_4_iso.produce_setup_iso_output_3().unwrap();
-    let peer_5_setup_iso_output_3 = peer_5_iso.produce_setup_iso_output_3().unwrap();
+    let peer_1_setup_iso_output_3 = peer_1_iso.produce_setup_iso_output_3().or_err()?;
+    let peer_2_setup_iso_output_3 = peer_2_iso.produce_setup_iso_output_3().or_err()?;
+    let peer_3_setup_iso_output_3 = peer_3_iso.produce_setup_iso_output_3().or_err()?;
+    let peer_4_setup_iso_output_3 = peer_4_iso.produce_setup_iso_output_3().or_err()?;
+    let peer_5_setup_iso_output_3 = peer_5_iso.produce_setup_iso_output_3().or_err()?;
     debug!("ISOs produced SetupIsoOutput3 to signal to peers to connect ISO to Boomletwo.");
 
     //////////////////////////////
@@ -3957,26 +4014,26 @@ pub fn run(
     debug!("Step 80:");
     peer_1
         .consume_setup_iso_output_3(peer_1_setup_iso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_iso_output_3(peer_2_setup_iso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_iso_output_3(peer_3_setup_iso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_iso_output_3(peer_4_setup_iso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_iso_output_3(peer_5_setup_iso_output_3)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers are notified to connect their ISO to Boomletwo.");
-    let peer_1_setup_iso_input_4 = peer_1.produce_setup_iso_input_4().unwrap();
-    let peer_2_setup_iso_input_4 = peer_2.produce_setup_iso_input_4().unwrap();
-    let peer_3_setup_iso_input_4 = peer_3.produce_setup_iso_input_4().unwrap();
-    let peer_4_setup_iso_input_4 = peer_4.produce_setup_iso_input_4().unwrap();
-    let peer_5_setup_iso_input_4 = peer_5.produce_setup_iso_input_4().unwrap();
+    let peer_1_setup_iso_input_4 = peer_1.produce_setup_iso_input_4().or_err()?;
+    let peer_2_setup_iso_input_4 = peer_2.produce_setup_iso_input_4().or_err()?;
+    let peer_3_setup_iso_input_4 = peer_3.produce_setup_iso_input_4().or_err()?;
+    let peer_4_setup_iso_input_4 = peer_4.produce_setup_iso_input_4().or_err()?;
+    let peer_5_setup_iso_input_4 = peer_5.produce_setup_iso_input_4().or_err()?;
     debug!("Peers produced SetupIsoInput4 to signal Boomletwo connection to ISO.");
 
     //////////////////////////////
@@ -3985,30 +4042,35 @@ pub fn run(
     debug!("Step 81:");
     peer_1_iso
         .consume_setup_iso_input_4(peer_1_setup_iso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_iso_input_4(peer_2_setup_iso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_iso_input_4(peer_3_setup_iso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_iso_input_4(peer_4_setup_iso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_iso_input_4(peer_5_setup_iso_input_4)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs are aware of their connection to Boomletwo.");
-    let peer_1_setup_iso_boomletwo_message_2 =
-        peer_1_iso.produce_setup_iso_boomletwo_message_2().unwrap();
-    let peer_2_setup_iso_boomletwo_message_2 =
-        peer_2_iso.produce_setup_iso_boomletwo_message_2().unwrap();
-    let peer_3_setup_iso_boomletwo_message_2 =
-        peer_3_iso.produce_setup_iso_boomletwo_message_2().unwrap();
-    let peer_4_setup_iso_boomletwo_message_2 =
-        peer_4_iso.produce_setup_iso_boomletwo_message_2().unwrap();
-    let peer_5_setup_iso_boomletwo_message_2 =
-        peer_5_iso.produce_setup_iso_boomletwo_message_2().unwrap();
+    let peer_1_setup_iso_boomletwo_message_2 = peer_1_iso
+        .produce_setup_iso_boomletwo_message_2()
+        .or_err()?;
+    let peer_2_setup_iso_boomletwo_message_2 = peer_2_iso
+        .produce_setup_iso_boomletwo_message_2()
+        .or_err()?;
+    let peer_3_setup_iso_boomletwo_message_2 = peer_3_iso
+        .produce_setup_iso_boomletwo_message_2()
+        .or_err()?;
+    let peer_4_setup_iso_boomletwo_message_2 = peer_4_iso
+        .produce_setup_iso_boomletwo_message_2()
+        .or_err()?;
+    let peer_5_setup_iso_boomletwo_message_2 = peer_5_iso
+        .produce_setup_iso_boomletwo_message_2()
+        .or_err()?;
     debug!("ISOs produced SetupIsoBoomletwoMessage2 to send backup data to their Boomletwo.");
 
     //////////////////////////////
@@ -4017,35 +4079,35 @@ pub fn run(
     debug!("Step 82:");
     peer_1_boomletwo
         .consume_setup_iso_boomletwo_message_2(peer_1_setup_iso_boomletwo_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_boomletwo
         .consume_setup_iso_boomletwo_message_2(peer_2_setup_iso_boomletwo_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_boomletwo
         .consume_setup_iso_boomletwo_message_2(peer_3_setup_iso_boomletwo_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_boomletwo
         .consume_setup_iso_boomletwo_message_2(peer_4_setup_iso_boomletwo_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_boomletwo
         .consume_setup_iso_boomletwo_message_2(peer_5_setup_iso_boomletwo_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("Boomletwo loads backup data in itself.");
     let peer_1_setup_boomletwo_iso_message_2 = peer_1_boomletwo
         .produce_setup_boomletwo_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomletwo_iso_message_2 = peer_2_boomletwo
         .produce_setup_boomletwo_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomletwo_iso_message_2 = peer_3_boomletwo
         .produce_setup_boomletwo_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomletwo_iso_message_2 = peer_4_boomletwo
         .produce_setup_boomletwo_iso_message_2()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomletwo_iso_message_2 = peer_5_boomletwo
         .produce_setup_boomletwo_iso_message_2()
-        .unwrap();
+        .or_err()?;
     debug!(
         "Boomletwos produced SetupBoomletwoIsoMessage2 to signal to ISOs that their backup is complete."
     );
@@ -4056,25 +4118,25 @@ pub fn run(
     debug!("Step 83:");
     peer_1_iso
         .consume_setup_boomletwo_iso_message_2(peer_1_setup_boomletwo_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomletwo_iso_message_2(peer_2_setup_boomletwo_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomletwo_iso_message_2(peer_3_setup_boomletwo_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomletwo_iso_message_2(peer_4_setup_boomletwo_iso_message_2)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomletwo_iso_message_2(peer_5_setup_boomletwo_iso_message_2)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs know their Boomletwos' backup is complete.");
-    let peer_1_setup_iso_output_4 = peer_1_iso.produce_setup_iso_output_4().unwrap();
-    let peer_2_setup_iso_output_4 = peer_2_iso.produce_setup_iso_output_4().unwrap();
-    let peer_3_setup_iso_output_4 = peer_3_iso.produce_setup_iso_output_4().unwrap();
-    let peer_4_setup_iso_output_4 = peer_4_iso.produce_setup_iso_output_4().unwrap();
-    let peer_5_setup_iso_output_4 = peer_5_iso.produce_setup_iso_output_4().unwrap();
+    let peer_1_setup_iso_output_4 = peer_1_iso.produce_setup_iso_output_4().or_err()?;
+    let peer_2_setup_iso_output_4 = peer_2_iso.produce_setup_iso_output_4().or_err()?;
+    let peer_3_setup_iso_output_4 = peer_3_iso.produce_setup_iso_output_4().or_err()?;
+    let peer_4_setup_iso_output_4 = peer_4_iso.produce_setup_iso_output_4().or_err()?;
+    let peer_5_setup_iso_output_4 = peer_5_iso.produce_setup_iso_output_4().or_err()?;
     debug!("ISOs produced SetupIsoOutput4 to signal to peers to connect ISO to Boomlet.");
 
     //////////////////////////////
@@ -4083,26 +4145,26 @@ pub fn run(
     debug!("Step 84:");
     peer_1
         .consume_setup_iso_output_4(peer_1_setup_iso_output_4)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_iso_output_4(peer_2_setup_iso_output_4)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_iso_output_4(peer_3_setup_iso_output_4)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_iso_output_4(peer_4_setup_iso_output_4)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_iso_output_4(peer_5_setup_iso_output_4)
-        .unwrap();
+        .or_err()?;
 
     debug!("Peers are notified to connect their ISO to Boomlet.");
-    let peer_1_setup_iso_input_5 = peer_1.produce_setup_iso_input_5().unwrap();
-    let peer_2_setup_iso_input_5 = peer_2.produce_setup_iso_input_5().unwrap();
-    let peer_3_setup_iso_input_5 = peer_3.produce_setup_iso_input_5().unwrap();
-    let peer_4_setup_iso_input_5 = peer_4.produce_setup_iso_input_5().unwrap();
-    let peer_5_setup_iso_input_5 = peer_5.produce_setup_iso_input_5().unwrap();
+    let peer_1_setup_iso_input_5 = peer_1.produce_setup_iso_input_5().or_err()?;
+    let peer_2_setup_iso_input_5 = peer_2.produce_setup_iso_input_5().or_err()?;
+    let peer_3_setup_iso_input_5 = peer_3.produce_setup_iso_input_5().or_err()?;
+    let peer_4_setup_iso_input_5 = peer_4.produce_setup_iso_input_5().or_err()?;
+    let peer_5_setup_iso_input_5 = peer_5.produce_setup_iso_input_5().or_err()?;
 
     debug!("Peers produced SetupIsoInput5 to signal Boomlet connection to ISO.");
 
@@ -4112,30 +4174,30 @@ pub fn run(
     debug!("Step 85:");
     peer_1_iso
         .consume_setup_iso_input_5(peer_1_setup_iso_input_5)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_iso_input_5(peer_2_setup_iso_input_5)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_iso_input_5(peer_3_setup_iso_input_5)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_iso_input_5(peer_4_setup_iso_input_5)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_iso_input_5(peer_5_setup_iso_input_5)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs are aware of their connection to Boomlet.");
     let peer_1_setup_iso_boomlet_message_6 =
-        peer_1_iso.produce_setup_iso_boomlet_message_6().unwrap();
+        peer_1_iso.produce_setup_iso_boomlet_message_6().or_err()?;
     let peer_2_setup_iso_boomlet_message_6 =
-        peer_2_iso.produce_setup_iso_boomlet_message_6().unwrap();
+        peer_2_iso.produce_setup_iso_boomlet_message_6().or_err()?;
     let peer_3_setup_iso_boomlet_message_6 =
-        peer_3_iso.produce_setup_iso_boomlet_message_6().unwrap();
+        peer_3_iso.produce_setup_iso_boomlet_message_6().or_err()?;
     let peer_4_setup_iso_boomlet_message_6 =
-        peer_4_iso.produce_setup_iso_boomlet_message_6().unwrap();
+        peer_4_iso.produce_setup_iso_boomlet_message_6().or_err()?;
     let peer_5_setup_iso_boomlet_message_6 =
-        peer_5_iso.produce_setup_iso_boomlet_message_6().unwrap();
+        peer_5_iso.produce_setup_iso_boomlet_message_6().or_err()?;
     debug!(
         "ISOs produced SetupIsoBoomletMessage6 to tell their Boomlets that Boomletwo backups are complete."
     );
@@ -4146,35 +4208,35 @@ pub fn run(
     debug!("Step 86:");
     peer_1_boomlet
         .consume_setup_iso_boomlet_message_6(peer_1_setup_iso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_iso_boomlet_message_6(peer_2_setup_iso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_iso_boomlet_message_6(peer_3_setup_iso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_iso_boomlet_message_6(peer_4_setup_iso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_iso_boomlet_message_6(peer_5_setup_iso_boomlet_message_6)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets know Boomletwos' backup are complete.");
     let peer_1_setup_boomlet_iso_message_6 = peer_1_boomlet
         .produce_setup_boomlet_iso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_iso_message_6 = peer_2_boomlet
         .produce_setup_boomlet_iso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_iso_message_6 = peer_3_boomlet
         .produce_setup_boomlet_iso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_iso_message_6 = peer_4_boomlet
         .produce_setup_boomlet_iso_message_6()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_iso_message_6 = peer_5_boomlet
         .produce_setup_boomlet_iso_message_6()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletIsoMessage6 to notify ISOs of the completion of backup.");
 
     //////////////////////////////
@@ -4183,25 +4245,25 @@ pub fn run(
     debug!("Step 87:");
     peer_1_iso
         .consume_setup_boomlet_iso_message_6(peer_1_setup_boomlet_iso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_2_iso
         .consume_setup_boomlet_iso_message_6(peer_2_setup_boomlet_iso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_3_iso
         .consume_setup_boomlet_iso_message_6(peer_3_setup_boomlet_iso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_4_iso
         .consume_setup_boomlet_iso_message_6(peer_4_setup_boomlet_iso_message_6)
-        .unwrap();
+        .or_err()?;
     peer_5_iso
         .consume_setup_boomlet_iso_message_6(peer_5_setup_boomlet_iso_message_6)
-        .unwrap();
+        .or_err()?;
     debug!("ISOs know about Boomlet's completion of backup.");
-    let peer_1_setup_iso_output_5 = peer_1_iso.produce_setup_iso_output_5().unwrap();
-    let peer_2_setup_iso_output_5 = peer_2_iso.produce_setup_iso_output_5().unwrap();
-    let peer_3_setup_iso_output_5 = peer_3_iso.produce_setup_iso_output_5().unwrap();
-    let peer_4_setup_iso_output_5 = peer_4_iso.produce_setup_iso_output_5().unwrap();
-    let peer_5_setup_iso_output_5 = peer_5_iso.produce_setup_iso_output_5().unwrap();
+    let peer_1_setup_iso_output_5 = peer_1_iso.produce_setup_iso_output_5().or_err()?;
+    let peer_2_setup_iso_output_5 = peer_2_iso.produce_setup_iso_output_5().or_err()?;
+    let peer_3_setup_iso_output_5 = peer_3_iso.produce_setup_iso_output_5().or_err()?;
+    let peer_4_setup_iso_output_5 = peer_4_iso.produce_setup_iso_output_5().or_err()?;
+    let peer_5_setup_iso_output_5 = peer_5_iso.produce_setup_iso_output_5().or_err()?;
     debug!(
         "ISOs produced SetupIsoOutput5 to signal to peers about the completion of Boomlets' backup."
     );
@@ -4212,25 +4274,25 @@ pub fn run(
     debug!("Step 88:");
     peer_1
         .consume_setup_iso_output_5(peer_1_setup_iso_output_5)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_iso_output_5(peer_2_setup_iso_output_5)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_iso_output_5(peer_3_setup_iso_output_5)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_iso_output_5(peer_4_setup_iso_output_5)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_iso_output_5(peer_5_setup_iso_output_5)
-        .unwrap();
+        .or_err()?;
     debug!("Peers are notified about the completion of Boomlets' backup.");
-    let peer_1_setup_niso_input_4 = peer_1.produce_setup_niso_input_4().unwrap();
-    let peer_2_setup_niso_input_4 = peer_2.produce_setup_niso_input_4().unwrap();
-    let peer_3_setup_niso_input_4 = peer_3.produce_setup_niso_input_4().unwrap();
-    let peer_4_setup_niso_input_4 = peer_4.produce_setup_niso_input_4().unwrap();
-    let peer_5_setup_niso_input_4 = peer_5.produce_setup_niso_input_4().unwrap();
+    let peer_1_setup_niso_input_4 = peer_1.produce_setup_niso_input_4().or_err()?;
+    let peer_2_setup_niso_input_4 = peer_2.produce_setup_niso_input_4().or_err()?;
+    let peer_3_setup_niso_input_4 = peer_3.produce_setup_niso_input_4().or_err()?;
+    let peer_4_setup_niso_input_4 = peer_4.produce_setup_niso_input_4().or_err()?;
+    let peer_5_setup_niso_input_4 = peer_5.produce_setup_niso_input_4().or_err()?;
 
     debug!("Peers produced SetupNisoInput4 to tell NISOs to finish setup.");
 
@@ -4240,30 +4302,35 @@ pub fn run(
     debug!("Step 89:");
     peer_1_niso
         .consume_setup_niso_input_4(peer_1_setup_niso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_input_4(peer_2_setup_niso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_input_4(peer_3_setup_niso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_input_4(peer_4_setup_niso_input_4)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_input_4(peer_5_setup_niso_input_4)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs are notified to finish setup.");
-    let peer_1_setup_niso_boomlet_message_11 =
-        peer_1_niso.produce_setup_niso_boomlet_message_11().unwrap();
-    let peer_2_setup_niso_boomlet_message_11 =
-        peer_2_niso.produce_setup_niso_boomlet_message_11().unwrap();
-    let peer_3_setup_niso_boomlet_message_11 =
-        peer_3_niso.produce_setup_niso_boomlet_message_11().unwrap();
-    let peer_4_setup_niso_boomlet_message_11 =
-        peer_4_niso.produce_setup_niso_boomlet_message_11().unwrap();
-    let peer_5_setup_niso_boomlet_message_11 =
-        peer_5_niso.produce_setup_niso_boomlet_message_11().unwrap();
+    let peer_1_setup_niso_boomlet_message_11 = peer_1_niso
+        .produce_setup_niso_boomlet_message_11()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_11 = peer_2_niso
+        .produce_setup_niso_boomlet_message_11()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_11 = peer_3_niso
+        .produce_setup_niso_boomlet_message_11()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_11 = peer_4_niso
+        .produce_setup_niso_boomlet_message_11()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_11 = peer_5_niso
+        .produce_setup_niso_boomlet_message_11()
+        .or_err()?;
     debug!("NISOs produced SetupNisoBoomletMessage11 to tell Boomlets to finish setup.");
 
     //////////////////////////////
@@ -4272,35 +4339,35 @@ pub fn run(
     debug!("Step 90:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_11(peer_1_setup_niso_boomlet_message_11)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_11(peer_2_setup_niso_boomlet_message_11)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_11(peer_3_setup_niso_boomlet_message_11)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_11(peer_4_setup_niso_boomlet_message_11)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_11(peer_5_setup_niso_boomlet_message_11)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets are notified to finish setup.");
     let peer_1_setup_boomlet_niso_message_11 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_11()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_11 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_11()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_11 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_11()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_11 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_11()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_11 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_11()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletNisoMessage11 to share their signature on finish setup.");
 
     //////////////////////////////
@@ -4309,35 +4376,35 @@ pub fn run(
     debug!("Step 91:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_11(peer_1_setup_boomlet_niso_message_11)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_11(peer_2_setup_boomlet_niso_message_11)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_11(peer_3_setup_boomlet_niso_message_11)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_11(peer_4_setup_boomlet_niso_message_11)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_11(peer_5_setup_boomlet_niso_message_11)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs received Boomlets' signature on finish setup.");
     let peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_4 = peer_1_niso
         .produce_setup_niso_peer_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_4 = peer_2_niso
         .produce_setup_niso_peer_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_4 = peer_3_niso
         .produce_setup_niso_peer_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_4 = peer_4_niso
         .produce_setup_niso_peer_niso_message_4()
-        .unwrap();
+        .or_err()?;
     let peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_4 = peer_5_niso
         .produce_setup_niso_peer_niso_message_4()
-        .unwrap();
+        .or_err()?;
     debug!(
         "NISOs produced parcels of SetupNisoPeerNisoMessage4 to share their Boomlet's signatures on finish setup."
     );
@@ -4351,28 +4418,28 @@ pub fn run(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_1_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -4381,28 +4448,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_2_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -4411,28 +4478,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_3_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -4441,28 +4508,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_5_id.clone(),
             peer_5_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_4_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -4471,28 +4538,28 @@ pub fn run(
             peer_1_id.clone(),
             peer_1_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_2_id.clone(),
             peer_2_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_3_id.clone(),
             peer_3_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
         MetadataAttachedMessage::new(
             peer_4_id.clone(),
             peer_4_parcel_to_be_sent_setup_niso_peer_niso_message_4
                 .look_for_message(&peer_5_id)
-                .unwrap()
+                .or_err()?
                 .clone(),
         ),
     ]);
@@ -4500,38 +4567,43 @@ pub fn run(
         .consume_setup_niso_peer_niso_message_4(
             peer_1_parcel_to_be_received_setup_niso_peer_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_niso_peer_niso_message_4(
             peer_2_parcel_to_be_received_setup_niso_peer_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_niso_peer_niso_message_4(
             peer_3_parcel_to_be_received_setup_niso_peer_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_niso_peer_niso_message_4(
             peer_4_parcel_to_be_received_setup_niso_peer_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_niso_peer_niso_message_4(
             peer_5_parcel_to_be_received_setup_niso_peer_niso_message_4,
         )
-        .unwrap();
+        .or_err()?;
     debug!("NISOs exchanged their Boomlets' signature on finish setup.");
-    let peer_1_setup_niso_boomlet_message_12 =
-        peer_1_niso.produce_setup_niso_boomlet_message_12().unwrap();
-    let peer_2_setup_niso_boomlet_message_12 =
-        peer_2_niso.produce_setup_niso_boomlet_message_12().unwrap();
-    let peer_3_setup_niso_boomlet_message_12 =
-        peer_3_niso.produce_setup_niso_boomlet_message_12().unwrap();
-    let peer_4_setup_niso_boomlet_message_12 =
-        peer_4_niso.produce_setup_niso_boomlet_message_12().unwrap();
-    let peer_5_setup_niso_boomlet_message_12 =
-        peer_5_niso.produce_setup_niso_boomlet_message_12().unwrap();
+    let peer_1_setup_niso_boomlet_message_12 = peer_1_niso
+        .produce_setup_niso_boomlet_message_12()
+        .or_err()?;
+    let peer_2_setup_niso_boomlet_message_12 = peer_2_niso
+        .produce_setup_niso_boomlet_message_12()
+        .or_err()?;
+    let peer_3_setup_niso_boomlet_message_12 = peer_3_niso
+        .produce_setup_niso_boomlet_message_12()
+        .or_err()?;
+    let peer_4_setup_niso_boomlet_message_12 = peer_4_niso
+        .produce_setup_niso_boomlet_message_12()
+        .or_err()?;
+    let peer_5_setup_niso_boomlet_message_12 = peer_5_niso
+        .produce_setup_niso_boomlet_message_12()
+        .or_err()?;
     debug!(
         "NISOs produced SetupNisoBoomletMessage12 to give all other peers' Boomlet signature on finish setup to their Boomlet."
     );
@@ -4542,35 +4614,35 @@ pub fn run(
     debug!("Step 93:");
     peer_1_boomlet
         .consume_setup_niso_boomlet_message_12(peer_1_setup_niso_boomlet_message_12)
-        .unwrap();
+        .or_err()?;
     peer_2_boomlet
         .consume_setup_niso_boomlet_message_12(peer_2_setup_niso_boomlet_message_12)
-        .unwrap();
+        .or_err()?;
     peer_3_boomlet
         .consume_setup_niso_boomlet_message_12(peer_3_setup_niso_boomlet_message_12)
-        .unwrap();
+        .or_err()?;
     peer_4_boomlet
         .consume_setup_niso_boomlet_message_12(peer_4_setup_niso_boomlet_message_12)
-        .unwrap();
+        .or_err()?;
     peer_5_boomlet
         .consume_setup_niso_boomlet_message_12(peer_5_setup_niso_boomlet_message_12)
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets received and verified all other peers' Boomlet signature on finish setup.");
     let peer_1_setup_boomlet_niso_message_12 = peer_1_boomlet
         .produce_setup_boomlet_niso_message_12()
-        .unwrap();
+        .or_err()?;
     let peer_2_setup_boomlet_niso_message_12 = peer_2_boomlet
         .produce_setup_boomlet_niso_message_12()
-        .unwrap();
+        .or_err()?;
     let peer_3_setup_boomlet_niso_message_12 = peer_3_boomlet
         .produce_setup_boomlet_niso_message_12()
-        .unwrap();
+        .or_err()?;
     let peer_4_setup_boomlet_niso_message_12 = peer_4_boomlet
         .produce_setup_boomlet_niso_message_12()
-        .unwrap();
+        .or_err()?;
     let peer_5_setup_boomlet_niso_message_12 = peer_5_boomlet
         .produce_setup_boomlet_niso_message_12()
-        .unwrap();
+        .or_err()?;
     debug!("Boomlets produced SetupBoomletNisoMessage12 to notify NISO of finishing setup.");
 
     //////////////////////////////
@@ -4579,41 +4651,41 @@ pub fn run(
     debug!("Step 94:");
     peer_1_niso
         .consume_setup_boomlet_niso_message_12(peer_1_setup_boomlet_niso_message_12)
-        .unwrap();
+        .or_err()?;
     peer_2_niso
         .consume_setup_boomlet_niso_message_12(peer_2_setup_boomlet_niso_message_12)
-        .unwrap();
+        .or_err()?;
     peer_3_niso
         .consume_setup_boomlet_niso_message_12(peer_3_setup_boomlet_niso_message_12)
-        .unwrap();
+        .or_err()?;
     peer_4_niso
         .consume_setup_boomlet_niso_message_12(peer_4_setup_boomlet_niso_message_12)
-        .unwrap();
+        .or_err()?;
     peer_5_niso
         .consume_setup_boomlet_niso_message_12(peer_5_setup_boomlet_niso_message_12)
-        .unwrap();
+        .or_err()?;
     debug!("NISOs know that their Boomlets finished setup.");
-    let peer_1_setup_niso_output_3 = peer_1_niso.produce_setup_niso_output_3().unwrap();
-    let peer_2_setup_niso_output_3 = peer_2_niso.produce_setup_niso_output_3().unwrap();
-    let peer_3_setup_niso_output_3 = peer_3_niso.produce_setup_niso_output_3().unwrap();
-    let peer_4_setup_niso_output_3 = peer_4_niso.produce_setup_niso_output_3().unwrap();
-    let peer_5_setup_niso_output_3 = peer_5_niso.produce_setup_niso_output_3().unwrap();
+    let peer_1_setup_niso_output_3 = peer_1_niso.produce_setup_niso_output_3().or_err()?;
+    let peer_2_setup_niso_output_3 = peer_2_niso.produce_setup_niso_output_3().or_err()?;
+    let peer_3_setup_niso_output_3 = peer_3_niso.produce_setup_niso_output_3().or_err()?;
+    let peer_4_setup_niso_output_3 = peer_4_niso.produce_setup_niso_output_3().or_err()?;
+    let peer_5_setup_niso_output_3 = peer_5_niso.produce_setup_niso_output_3().or_err()?;
     debug!("NISOs produced SetupNisoOutput3 to notify peers that setup has finished.");
     peer_1
         .consume_setup_niso_output_3(peer_1_setup_niso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_2
         .consume_setup_niso_output_3(peer_2_setup_niso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_3
         .consume_setup_niso_output_3(peer_3_setup_niso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_4
         .consume_setup_niso_output_3(peer_4_setup_niso_output_3)
-        .unwrap();
+        .or_err()?;
     peer_5
         .consume_setup_niso_output_3(peer_5_setup_niso_output_3)
-        .unwrap();
+        .or_err()?;
     debug!("Peers know that setup has finished.");
 
     peer_1_iso.reset_state();

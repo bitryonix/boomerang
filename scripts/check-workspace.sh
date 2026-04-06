@@ -4,9 +4,15 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+cargo +stable metadata --no-deps --format-version 1 >/dev/null
 cargo +stable fmt --all --check
 cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
 cargo +stable clippy --workspace --all-targets --all-features -- -W clippy::missing_docs_in_private_items
+cargo +stable clippy --workspace --lib --bins --examples --all-features -- \
+  -D warnings \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic
 cargo +stable test --workspace --all-features
 cargo +stable test --workspace --doc
 RUSTDOCFLAGS="-D warnings" cargo +stable doc --workspace --no-deps
@@ -47,9 +53,21 @@ def allowed_line(line: str) -> bool:
         return True
     if stripped.startswith("#["):
         return True
-    if stripped.startswith("mod ") or stripped.startswith("pub mod "):
+    if (
+        stripped.startswith("mod ")
+        or stripped.startswith("pub mod ")
+        or stripped.startswith("pub(crate) mod ")
+        or stripped.startswith("pub(super) mod ")
+        or (stripped.startswith("pub(in ") and " mod " in stripped)
+    ):
         return True
-    if stripped.startswith("pub use ") or stripped.startswith("use "):
+    if (
+        stripped.startswith("pub use ")
+        or stripped.startswith("pub(crate) use ")
+        or stripped.startswith("pub(super) use ")
+        or (stripped.startswith("pub(in ") and " use " in stripped)
+        or stripped.startswith("use ")
+    ):
         return True
     return False
 
@@ -114,5 +132,12 @@ fi
 if rg -n '\b(todo!|unimplemented!)\b' --glob '!target/**' --glob '*.rs' >/tmp/boomerang-todo-check.txt; then
   echo "Incomplete implementation markers found:" >&2
   cat /tmp/boomerang-todo-check.txt >&2
+  exit 1
+fi
+
+if rg -n '/Users/bedlam/Desktop/(getting_rusty|bitceptron)/boomerang' \
+  README.md Architecture.md DesignDecisions.md Limitations.md docs poc crates >/tmp/boomerang-doc-path-check.txt; then
+  echo "Machine-specific documentation links found:" >&2
+  cat /tmp/boomerang-doc-path-check.txt >&2
   exit 1
 fi

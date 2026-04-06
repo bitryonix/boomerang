@@ -4,6 +4,7 @@ use protocol::constructs::PeerId;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::envelopes::PeerToPeerEnvelope;
+use crate::error_ext::NetworkedResult;
 
 pub type MailboxTx<T> = mpsc::Sender<T>;
 pub type MailboxRx<T> = mpsc::Receiver<T>;
@@ -30,18 +31,24 @@ impl PeerDirectory {
         self.inboxes.read().await.clone()
     }
 
-    pub async fn send(&self, peer_id: &PeerId, envelope: PeerToPeerEnvelope) {
+    pub async fn send(
+        &self,
+        peer_id: &PeerId,
+        envelope: PeerToPeerEnvelope,
+    ) -> NetworkedResult<()> {
         let sender = self
             .inboxes
             .read()
             .await
             .get(peer_id)
             .cloned()
-            .expect("PeerDirectory: missing peer inbox");
+            .ok_or_else(|| std::io::Error::other("PeerDirectory: missing peer inbox"))?;
 
         sender
             .send(envelope)
             .await
-            .expect("PeerDirectory: peer inbox closed");
+            .map_err(|_| std::io::Error::other("PeerDirectory: peer inbox closed"))?;
+
+        Ok(())
     }
 }
