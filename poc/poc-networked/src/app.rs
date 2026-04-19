@@ -145,7 +145,7 @@ pub(crate) async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let sar_actors = sars
         .into_iter()
-        .zip(sar_ports.into_iter())
+        .zip(sar_ports)
         .map(
             |(sar, (peer_to_sar_rx, sar_to_peer_tx, wt_to_sar_rx, sar_to_wt_tx))| {
                 SarActor::new(
@@ -162,7 +162,7 @@ pub(crate) async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let peer_actors = peer_entities
         .into_iter()
-        .zip(peer_ports.into_iter())
+        .zip(peer_ports)
         .enumerate()
         .map(|(index, (entities, ports))| {
             PeerActor::new(
