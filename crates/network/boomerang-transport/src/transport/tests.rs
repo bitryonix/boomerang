@@ -30,7 +30,9 @@ fn runtime() -> tokio::runtime::Runtime {
 }
 
 async fn bind_ephemeral_listener() -> Option<tokio::net::TcpListener> {
-    match tokio::net::TcpListener::bind(localhost_addr(0)).await {
+    match tokio::net::TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0)))
+        .await
+    {
         Ok(listener) => Some(listener),
         Err(error) if error.kind() == ErrorKind::PermissionDenied => None,
         Err(error) => panic!("ephemeral localhost listener should bind in tests: {error}"),
@@ -307,9 +309,12 @@ fn write_outbound_frame_sends_bytes_to_registered_writer() {
         let frame = ProtocolFrame::new(MessageTag::TransportReady, Vec::new())
             .expect("transport-ready frame should encode");
         let outbound = OutboundFrame::new("link-1", frame.clone());
-        write_outbound_frame(&writers, &outbound, TransportRole::Wt)
-            .expect("registered route should write");
-        drop(writers);
+        tokio::task::spawn_blocking(move || {
+            write_outbound_frame(&writers, &outbound, TransportRole::Wt)
+        })
+        .await
+        .expect("blocking sender should finish")
+        .expect("registered route should write");
         writer.await.expect("writer task should finish");
 
         let bytes = reader.await.expect("reader task should finish");

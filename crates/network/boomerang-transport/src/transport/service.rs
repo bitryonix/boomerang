@@ -140,6 +140,19 @@ pub(crate) async fn establish_links_with_delay(
 }
 
 /// Writes one outbound frame to the writer queue associated with its named route.
+///
+/// # Why this exists
+/// The runtime drives role code through a synchronous transport bridge, so outbound routing needs
+/// one small helper that resolves the manifest link name and hands the frame to that link's
+/// bounded writer queue.
+///
+/// # Blocking
+/// This function may block while waiting for queue capacity. Callers should keep it on the
+/// runtime's blocking side rather than invoking it directly on an async executor thread.
+///
+/// # Errors
+/// Returns [`TransportError::UnknownLink`] when the named route was never established and
+/// [`TransportError::OutboundChannelClosed`] when the writer task has already shut down.
 pub fn write_outbound_frame(
     writers: &LinkWriters,
     outbound: &OutboundFrame,

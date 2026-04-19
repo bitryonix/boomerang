@@ -5,6 +5,7 @@ use std::{
     fs,
     net::{Ipv4Addr, SocketAddrV4},
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -51,15 +52,24 @@ const EXTRA_TOR_ADDRESSES: [&str; 2] = [
     "5jfgyy7ctrjavpxvkb5rglwf7gkuo5vox27hxescd3vgsfcg2iwfmxqd.onion",
 ];
 
-fn load_fixture_identity(prefix: &str, raw: &str) -> PublishedProcessIdentity {
-    let path = std::env::temp_dir().join(format!(
-        "boomerang-scenarios-fixture-{prefix}-{}-{}.toml",
+/// Monotonic suffix used to keep test fixture paths unique within one test process.
+static UNIQUE_TEMP_SUFFIX: AtomicU64 = AtomicU64::new(0);
+
+/// Builds one unique TOML path under the system temp directory for test fixtures.
+fn unique_temp_toml_path(stem: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "{stem}-{}-{}-{}.toml",
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
-            .as_nanos()
-    ));
+            .as_nanos(),
+        UNIQUE_TEMP_SUFFIX.fetch_add(1, Ordering::Relaxed)
+    ))
+}
+
+fn load_fixture_identity(prefix: &str, raw: &str) -> PublishedProcessIdentity {
+    let path = unique_temp_toml_path(&format!("boomerang-scenarios-fixture-{prefix}"));
     fs::write(&path, raw).expect("fixture identity TOML should be written");
     let identity = load_published_process_identity(&path)
         .expect("fixture identity TOML should stay parseable");
@@ -278,12 +288,10 @@ fn generated_manifest_gives_each_peer_all_local_entities() {
 #[test]
 fn generated_manifest_round_trips_through_config_io() {
     let manifest = test_manifest();
-    let path = std::env::temp_dir().join(format!(
-        "boomerang-local-poc-roundtrip-{}.toml",
-        std::process::id()
-    ));
+    let path = unique_temp_toml_path("boomerang-local-poc-roundtrip");
     save_cluster_manifest(&path, &manifest).expect("manifest should save");
     let loaded = load_cluster_manifest(&path).expect("manifest should load");
 
     assert_eq!(loaded.processes.len(), manifest.processes.len());
+    let _ = fs::remove_file(path);
 }

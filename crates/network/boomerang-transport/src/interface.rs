@@ -65,6 +65,10 @@ pub trait TransportSession: Send {
     /// The runtime should address links by their manifest names and let the transport backend
     /// decide how that frame reaches the peer.
     ///
+    /// # Blocking
+    /// This call may wait for bounded outbound queue capacity because the runtime layer uses a
+    /// synchronous send/receive bridge after startup completes.
+    ///
     /// # Errors
     /// Returns a transport error when the route is unknown, the backend writer is unavailable, or
     /// the frame cannot be delivered.
