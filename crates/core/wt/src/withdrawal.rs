@@ -1041,14 +1041,9 @@ impl Wt {
                 wt_privkey,
             );
         let non_initiator_peers = shared_boomlet_wt_symmetric_keys_collection
-            .iter()
-            .filter_map(|(wt_peer_id, _shared_symmetric_key)| {
-                if wt_peer_id == initiator_peer {
-                    None
-                } else {
-                    Some(wt_peer_id.clone())
-                }
-            });
+            .keys()
+            .filter(|wt_peer_id| *wt_peer_id != initiator_peer)
+            .cloned();
 
         // Log finish.
         let result = Parcel::carbon_copy_for_communication_channel_ids(
